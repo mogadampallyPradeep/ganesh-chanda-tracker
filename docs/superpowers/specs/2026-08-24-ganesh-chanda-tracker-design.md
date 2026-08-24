@@ -27,7 +27,7 @@ Offline-write queue, multi-year/multi-fund, donor logins, PDF/print exports, rol
 
 ## Architecture
 
-- **Frontend:** React **PWA** — installable to the home screen (behaves like an app, tolerant of weak pandal connectivity for reads) and simultaneously a shareable public URL. One codebase serves both the volunteer app and the public statement.
+- **Frontend:** React **PWA** with **Tailwind CSS + shadcn/ui** — installable to the home screen (behaves like an app, tolerant of weak pandal connectivity for reads) and simultaneously a shareable public URL. One codebase serves both the volunteer app and the public statement. See **UI stack & theming**.
 - **Backend + DB:** **Supabase** (hosted Postgres + Auth + auto-generated REST API + Row Level Security). Almost no server code — the app talks to Supabase directly; RLS enforces who can read/write.
 - **Hosting:** static PWA on a free static host (Vercel/Netlify) or Railway; Supabase is fully managed.
 
@@ -153,6 +153,27 @@ interface should feel festive and be effortless to operate.
   statement so it can be saved or forwarded as a familiar file.
 - **Accessible:** works one-handed on a phone, high contrast, and installable to the home
   screen for quick access during collection rounds.
+
+## UI stack & theming
+
+Invest in a polished, cohesive look driven by a proper design system — not ad-hoc styles.
+
+- **Component/styling stack:** **Tailwind CSS + shadcn/ui** (Radix primitives). We own and
+  restyle every component, which is ideal for a custom festival theme and keeps the PWA light.
+- **Design tokens (CSS variables):** a single festival theme defined once and reused
+  everywhere — semantic tokens for background, surface, primary (saffron/marigold), accent
+  (gold), success/positive (received), danger/negative (over-budget), plus radius, spacing,
+  and shadow scales. Changing the theme = changing tokens, nothing else.
+- **Palette:** warm saffron / marigold primary, deep temple-red secondary, gold accents on a
+  soft cream background; a legible dark variant for night use.
+- **Typography:** a warm, highly readable typeface; choose a font with **Devanagari** support
+  so Marathi/Hindi labels can be added later without rework.
+- **Charts/visuals:** if any charts are added (e.g. spend-by-category), follow a single
+  accessible palette derived from the theme tokens so visuals read as one system in both
+  light and dark.
+- **Consistency:** shared table, card, button, and form components used across all three
+  parts so the whole app feels like one designed product, and the Excel-style statement
+  inherits the same tokens.
 
 ## Open items for the implementation plan
 
