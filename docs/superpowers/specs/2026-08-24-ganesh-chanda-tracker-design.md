@@ -23,7 +23,7 @@ At any time, anyone with a shared link can see the live **balance** — total re
 
 ## Non-goals (explicitly deferred)
 
-Offline-write queue, multi-year/multi-fund, donor logins, PDF/print exports, role hierarchies, SMS/email. Easy to add later; not in v1.
+Offline-write queue, multi-year/multi-fund, donor logins, PDF/print exports, role hierarchies, SMS/email. Easy to add later; not in v1. (Excel/CSV export **is** in v1 — see UI/UX.)
 
 ## Architecture
 
@@ -77,10 +77,11 @@ Screen is **pre-seeded with all categories at ₹0**; volunteer fills in amounts
 |---|---|---|
 | id | uuid pk | |
 | category_id | uuid fk → categories | chosen from preset list; links spend to its estimate line |
+| description | text | **what the spend was for**, so it's remembered (e.g. "Advance to Kumar Arts for idol") |
 | payee | text | optional |
 | amount | numeric | |
 | method | enum | `online` \| `offline` |
-| note | text | optional |
+| note | text | optional extra detail |
 | spent_by | uuid | volunteer (auth user) |
 | created_at | timestamptz | |
 
@@ -102,9 +103,9 @@ Expenses whose category has no estimate line still count in Total Spent, surface
 - **WhatsApp receipt:** "Share receipt" opens WhatsApp directly to the donor's number via a `wa.me/<phone>?text=<message>` deep link, prefilled with a thank-you, receipt number, amount, date, and a link to the receipt page. No API, no keys — the volunteer taps send.
 
 ### Part 2 — Track Spends
-- Form: **category (preset dropdown)**, amount, online/offline, optional payee/note.
+- Form: **category (preset dropdown)**, **description** (what it was for — so it's remembered), amount, online/offline, optional payee/note.
 - On save: counts toward Total Spent and the linked category's actual; **Available Balance updates live** (computed).
-- Simple chronological expense list.
+- Chronological expense list showing **category + description + amount** at a glance.
 
 ### Part 3 — Estimates
 - Pre-seeded budget list (one line per category, ₹0 default) — fill in amounts.
@@ -116,6 +117,9 @@ Expenses whose category has no estimate line still count in Total Spent, surface
 
 ### Public statement (shareable link)
 - Read-only totals + statement, WhatsApp-shareable.
+- **Excel-style layout:** donations and spends shown as clean spreadsheet-like tables
+  (headers, aligned amounts, a bold totals row), so the shared balance is easy for anyone
+  to understand. **Export to Excel/CSV** available.
 - **Privacy:** public sees donor **name + amount only** — phone and address are never exposed publicly (enforced via a public view / RLS that excludes those columns).
 
 ## Auth & access
@@ -126,6 +130,29 @@ Expenses whose category has no estimate line still count in Total Spent, surface
 ## Receipt numbering
 
 Sequential per fund with a festival prefix, e.g. `GNP2026-0001`. Generated server-side (Supabase) to avoid gaps/duplicates.
+
+## UI / UX direction
+
+**Traditional and friendly.** The audience is mandal volunteers, not tech users — the
+interface should feel festive and be effortless to operate.
+
+- **Aesthetic:** a traditional Ganesh-festival look — warm saffron / marigold / deep red
+  with gold accents, a clean readable typeface, and subtle cultural motifs. Celebratory,
+  not corporate.
+- **Simple, friendly controls:** large tap targets and buttons, minimal fields per screen,
+  clear labels in plain language, a prominent online/offline toggle, and obvious primary
+  actions ("Add Donation", "Share Receipt", "Add Spend").
+- **Fast entry:** category as a dropdown of presets, sensible defaults (today's date,
+  last-used method), and immediate feedback (balance updates on save).
+- **Legible balance:** the balance card is the hero — big numbers, high contrast, readable
+  at a glance on a phone in daylight.
+- **Spreadsheet feel where it's shared:** statements and lists use a familiar **Excel-style
+  table** — clear column headers, right-aligned amounts, alternating row shading, and a bold
+  **totals row** at the bottom. It should read like a spreadsheet anyone has seen before, so
+  the shared balance is instantly understandable. Offer **export to Excel/CSV** for the
+  statement so it can be saved or forwarded as a familiar file.
+- **Accessible:** works one-handed on a phone, high contrast, and installable to the home
+  screen for quick access during collection rounds.
 
 ## Open items for the implementation plan
 
