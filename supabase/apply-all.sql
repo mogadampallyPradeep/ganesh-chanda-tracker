@@ -116,9 +116,10 @@ create or replace view committee_public as
   select mobile, name, is_admin from committee_members;
 
 -- Verify credentials; returns safe fields or no rows.
+-- search_path includes `extensions`: Supabase installs pgcrypto there, not `public`.
 create or replace function member_login(p_mobile text, p_password text)
 returns table (mobile text, name text, is_admin boolean)
-language sql security definer set search_path = public as $$
+language sql security definer set search_path = public, extensions as $$
   select m.mobile, m.name, m.is_admin
   from committee_members m
   where m.mobile = p_mobile
@@ -127,7 +128,7 @@ $$;
 
 -- Add or update a member (name/admin). Sets password only on first insert.
 create or replace function add_member(p_mobile text, p_name text, p_password text, p_is_admin boolean default false)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   insert into committee_members (mobile, name, password_hash, is_admin)
   values (p_mobile, p_name, crypt(p_password, gen_salt('bf')), coalesce(p_is_admin, false))
   on conflict (mobile) do update
@@ -135,7 +136,7 @@ returns void language sql security definer set search_path = public as $$
 $$;
 
 create or replace function set_member_password(p_mobile text, p_password text)
-returns void language sql security definer set search_path = public as $$
+returns void language sql security definer set search_path = public, extensions as $$
   update committee_members set password_hash = crypt(p_password, gen_salt('bf'))
   where mobile = p_mobile;
 $$;
