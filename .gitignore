@@ -9,6 +9,11 @@ build/
 .vercel/
 .netlify/
 
+# tsc -b emit artifacts / build info
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
 # Env / secrets
 .env
 .env.*
