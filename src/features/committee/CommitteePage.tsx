@@ -11,6 +11,7 @@ import {
 } from './useCommittee'
 import { useExpenses } from '../expenses/useExpenses'
 import { computeHoldings, type MemberHolding } from '../../domain/holdings'
+import { computeBalance } from '../../domain/balance'
 import { AmountInput } from '../../components/common/AmountInput'
 import { StatCard } from '../../components/common/StatCard'
 import { formatINR, formatMobile } from '../../lib/format'
@@ -36,6 +37,19 @@ export function CommitteePage() {
       reimbursementsQuery.data ?? [],
     )
   }, [membersQuery.data, donationsQuery.data, expensesQuery.data, reimbursementsQuery.data])
+
+  // Single-treasurer model: the fund's cash/bank sits with whoever holds it,
+  // shown once at the top. Per-member custody is not tracked — members only
+  // surface an "owed back" balance when they spend from their own pocket.
+  const balance = useMemo(
+    () =>
+      computeBalance(
+        donationsQuery.data ?? [],
+        expensesQuery.data ?? [],
+        reimbursementsQuery.data ?? [],
+      ),
+    [donationsQuery.data, expensesQuery.data, reimbursementsQuery.data],
+  )
 
   const [settlingFor, setSettlingFor] = useState<string | null>(null)
   const [addingMember, setAddingMember] = useState(false)
@@ -65,6 +79,12 @@ export function CommitteePage() {
             + Add member
           </button>
         )}
+      </div>
+
+      {/* Fund total — the money the treasurer is holding right now. */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Cash in hand" value={formatINR(balance.cashInHand)} />
+        <StatCard label="In bank" value={formatINR(balance.inBank)} />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -148,30 +168,12 @@ function MemberCard({
           </p>
           <p className="text-xs text-ink-soft mt-0.5">{formatMobile(holding.mobile)}</p>
         </div>
-        {holding.over && (
-          <span className="text-[10px] font-bold uppercase tracking-wide text-neg bg-neg/10 rounded-full px-2 py-1 whitespace-nowrap">
-            Over-spent
-          </span>
+        {holding.owedBack > 0 && (
+          <div className="text-right">
+            <p className="text-[10px] text-ink-soft tracking-wide uppercase">Owed back</p>
+            <p className="font-display text-lg font-bold text-pos">{formatINR(holding.owedBack)}</p>
+          </div>
         )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 mt-3">
-        <StatCard label="Collected" value={formatINR(holding.collected)} />
-        <StatCard
-          label="Holding cash"
-          value={formatINR(holding.holdingCash)}
-          tone={holding.holdingCash < 0 ? 'neg' : 'default'}
-        />
-        <StatCard
-          label="Holding bank"
-          value={formatINR(holding.holdingBank)}
-          tone={holding.holdingBank < 0 ? 'neg' : 'default'}
-        />
-        <StatCard
-          label="Owed back"
-          value={formatINR(holding.owedBack)}
-          tone={holding.owedBack > 0 ? 'pos' : 'default'}
-        />
       </div>
 
       {holding.owedBack > 0 && !settling && (
@@ -180,7 +182,7 @@ function MemberCard({
           onClick={openSettle}
           className="mt-3 rounded-xl px-3.5 py-2 text-sm font-semibold text-white bg-gradient-to-b from-primary to-primary-deep"
         >
-          Settle
+          Settle {formatINR(holding.owedBack)}
         </button>
       )}
 
