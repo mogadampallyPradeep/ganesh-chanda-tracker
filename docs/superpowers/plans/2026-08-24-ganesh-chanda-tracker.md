@@ -1,26 +1,47 @@
 # Ganesh Chanda Tracker Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** the **spec is the authoritative source of truth** — read it first
+> (`docs/superpowers/specs/2026-08-24-ganesh-chanda-tracker-design.md`). The task breakdown below
+> is a build guide; where its details conflict with the spec, **the spec wins**. See
+> "Design updates (supersede earlier task text)" immediately below the constraints.
 
-**Goal:** Build an installable PWA for a Ganesh Chaturthi mandal to collect donations (with WhatsApp receipts), track spends against a live balance, and plan the budget — with a public shareable statement.
+**Goal:** Build an installable PWA for a Ganesh Chaturthi mandal to collect donations (with WhatsApp receipts), track spends against a live balance with per-member custody, and plan the budget — with a public shareable statement.
 
-**Architecture:** React + TypeScript SPA (Vite) styled with Tailwind + shadcn/ui, talking directly to Supabase (Postgres + Auth + RLS). Money totals are always computed from rows, never stored. Volunteers authenticate to write; the public reads a restricted statement through Postgres views that expose only safe columns.
+**Architecture:** React + TypeScript SPA (Vite) styled with Tailwind + shadcn/ui, talking directly to Supabase (Postgres). Money totals and per-member holdings are always computed from rows, never stored. Login is mobile + static password verified by a Postgres RPC; the public reads a restricted statement through Postgres views that expose only safe columns.
 
-**Tech Stack:** Vite, React 18, TypeScript, Tailwind CSS, shadcn/ui, React Router, TanStack Query, @supabase/supabase-js, react-hook-form + zod, SheetJS (`xlsx`), vite-plugin-pwa. Tests: Vitest + React Testing Library.
+**Tech Stack:** Vite, React 18, TypeScript (strict), Tailwind CSS, shadcn/ui, React Router, TanStack Query, @supabase/supabase-js, react-hook-form + zod, SheetJS (`xlsx`), vite-plugin-pwa. **No test framework — build directly, verify with `tsc --noEmit` + `npm run build` + manual click-through.**
 
 **Spec:** `docs/superpowers/specs/2026-08-24-ganesh-chanda-tracker-design.md`
 
 ## Global Constraints
 
 - **One fund, one festival (Ganesh 2026).** No multi-year/multi-fund tables or switching.
-- **Manual entry only.** No payment/bank/WhatsApp API integration. `method` is a per-entry label: `'online' | 'offline'`.
-- **Amounts are integer rupees** (Postgres `integer`, TS `number`). No paise. Currency display via `formatINR` (Indian grouping, `₹` prefix).
-- **Privacy:** donor `phone` and `address` are NEVER exposed to anonymous/public users. Public sees donor name + amount only.
-- **Auth model:** any authenticated user is a trusted volunteer with full CRUD. No role hierarchy in v1. Volunteers are created in the Supabase dashboard.
-- **Receipt numbers** are server-generated, sequential, formatted `<prefix><year>-<0000>` (default prefix `GNP`, e.g. `GNP2026-0042`).
-- **Theme:** festival design tokens (marigold/temple-red/gold on warm cream) defined once as CSS variables; light + dark both supported.
-- **Env vars:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Never commit real values; `.env` is gitignored; provide `.env.example`.
+- **Manual entry only.** No payment/bank/WhatsApp API integration.
+- **Amounts are integer rupees** (Postgres `integer`, TS `number`). No paise. Currency display via `formatINR` (Indian grouping, `₹` prefix). **All calculations automatic, live, and exact.**
+- **Phone number is the primary identity.** `committee_members.mobile` is the PK; `collected_by`, `paid_by`, and reimbursement member refs are all `text` mobiles.
+- **Auth:** mobile + static password, verified by a `SECURITY DEFINER` RPC `member_login` (never expose `password_hash`). Session in localStorage. **Admins** = `is_admin` members; they delete entries and manage committee/settings and can add members/admins. All members can add + **edit any spend/donation at any time**; delete is admin-only.
+- **Privacy:** donor `phone`/`address` and `password_hash` NEVER reach anon/public. Public sees donor name + amount only, via views.
+- **Spend source:** `cash` / `bank` / `personal` — UI presents "Committee fund → Cash/Bank" vs "Self". `cash`/`bank` draw down the fund quota; `personal` creates a reimbursement owed to `paid_by`.
+- **Receipt numbers** server-generated, sequential, `<prefix><year>-<0000>` (default `GNP`, e.g. `GNP2026-0042`).
+- **Theme:** festival design tokens (marigold/temple-red/gold on warm cream) as CSS variables; light + dark.
+- **Env vars:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Never commit real values; `.env` gitignored; provide `.env.example`.
 - **Supabase project ref:** `kzlsuosriuahkqrmiiac`. **GitHub:** `mogadampallyPradeep/ganesh-chanda-tracker`.
+
+## Design updates (supersede earlier task text)
+
+These decisions were made after the task list below was first drafted. **They override any
+conflicting task detail; follow the spec.**
+
+1. **No automated tests.** Ignore every "Write the failing test / Run to verify fail" step and all
+   Vitest/RTL setup. Each task = implement per spec → `tsc --noEmit` + `npm run build` clean → commit.
+   Keep logic in pure `src/domain/*` functions for reliability.
+2. **Auth is config-based, not Supabase Auth.** Replace Task 13 entirely: no email/password signup, no
+   `supabase.auth`. Instead — `member_login(mobile, password)` Postgres RPC returns safe member fields or
+   null; `AuthProvider` stores the member in localStorage; `useAuth()` exposes `{ member, isAdmin, signIn, signOut }`; `RequireAuth` redirects to `/login`.
+3. **Custody & reimbursements** (new — see spec): `expenses` has `paid_by` (mobile) + `source` (cash/bank/personal); add a `reimbursements` table. New domain fn `computeHoldings(members, donations, expenses, reimbursements)` → per-member `{ collected, holdingCash, holdingBank, owedBack, over }`. Committee screen shows these + a Reimburse action.
+4. **Spend form** uses "Paid from: Committee fund (Cash/Bank) / Self" + "Paid by" member; **calculator** built into every amount field.
+5. **Budget** screen adds a slider (actual vs estimated, red when over) and an overall **shortfall** (`estimated − collected` and `estimated − spent`).
+6. **Committee = configured members** (no auto-provision on login). Seed the initial admin numbers.
 
 ---
 

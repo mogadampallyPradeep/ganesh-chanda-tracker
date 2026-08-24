@@ -69,7 +69,7 @@ Screen is **pre-seeded with all categories at ₹0**; volunteer fills in amounts
 | amount | numeric | |
 | method | enum | `online` \| `offline` |
 | note | text | optional |
-| collected_by | uuid | volunteer (auth user) |
+| collected_by | text fk → committee_members.mobile | **who collected** this donation |
 | created_at | timestamptz | |
 
 ### `expenses` — spends (money out)
@@ -78,27 +78,49 @@ Screen is **pre-seeded with all categories at ₹0**; volunteer fills in amounts
 | id | uuid pk | |
 | category_id | uuid fk → categories | chosen from preset list; links spend to its estimate line |
 | description | text | **what the spend was for**, so it's remembered (e.g. "Advance to Kumar Arts for idol") |
-| payee | text | optional |
-| amount | numeric | |
-| method | enum | `online` \| `offline` |
+| payee | text | optional (the vendor) |
+| amount | int | |
+| paid_by | text fk → committee_members.mobile | **who paid** for this spend |
+| source | enum | `cash` \| `bank` \| `personal` — where the money came from |
 | note | text | optional extra detail |
-| spent_by | uuid | volunteer (auth user) |
 | created_at | timestamptz | |
 
-Expenses whose category has no estimate line still count in Total Spent, surfaced as an **"Unbudgeted"** bucket in the comparison view.
+`source` replaces the old online/offline label for spends: **`cash`** draws down fund cash-in-hand,
+**`bank`** draws down fund bank, **`personal`** is out-of-pocket by `paid_by` (creates a reimbursement
+owed — see below). Expenses whose category has no estimate line still count in Total Spent, surfaced
+as an **"Unbudgeted"** bucket.
 
-### `committee_members` — who runs the fund
+### `reimbursements` — paying a member back for a personal spend
 | field | type | notes |
 |---|---|---|
-| id | uuid pk | **equals the Supabase auth user id** |
-| name | text | shown on the Committee screen; defaults from email, editable |
-| phone | text | optional |
-| role | text | optional free-text (e.g. President, Treasurer); no access effect in v1 |
-| joined_at | timestamptz | first login |
+| id | uuid pk | |
+| member_id | text fk → committee_members.mobile | **who is being reimbursed** (e.g. Y) |
+| from_member_id | text fk → committee_members.mobile | **who paid them from the fund** (the holder, e.g. X) |
+| amount | int | |
+| source | enum | `cash` \| `bank` — which fund quota it came from |
+| created_at | timestamptz | |
 
-**Anyone who logs in is a committee member.** On first successful login the app
-auto-provisions a `committee_members` row for that auth user (id = user id). `donations.collected_by`
-and `expenses.spent_by` reference this id, so every entry is attributed to a committee member.
+A reimbursement **draws down fund cash/bank** (from the holder X) and **clears that much of the
+member's owed-back**. It is a settlement, not a new expense — it does **not** add to Total Spent.
+
+### `committee_members` — configured member list (also the login table)
+| field | type | notes |
+|---|---|---|
+| mobile | text **primary key** | **the primary identity** everywhere — login id and the key all entries attribute to |
+| name | text | shown on the Committee screen |
+| password_hash | text | hashed static password; never sent to the client |
+| is_admin | boolean | **grants elevated powers** (default false) |
+| created_at | timestamptz | |
+
+**Phone number is the primary identity** across the whole app: `donations.collected_by`,
+`expenses.paid_by`, and `reimbursements.member_id` / `from_member_id` all reference
+`committee_members.mobile`. Members are shown as name + mobile.
+
+**The member list is the config.** Anyone whose mobile number is in this table can log in
+with their static password; there is no email, OTP, or self-signup. `donations.collected_by`
+and `expenses.spent_by` reference `committee_members.id`, so every entry is attributed to a member.
+**Admins** are members with `is_admin = true` — a configured list of admin numbers. Admins can
+add members and flag any number as admin (admins add admins).
 
 ### Derived (never stored — always computed for correctness)
 - `Total Collected = sum(donations.amount)`
@@ -107,6 +129,23 @@ and `expenses.spent_by` reference this id, so every entry is attributed to a com
 - `Cash in hand = offline donations − offline expenses`
 - `In bank = online donations − online expenses`
 - Per-category: `estimated vs actual(sum of linked expenses) vs remaining/over`
+- **Spends deduct the matching quota by source:** `cash` spend → **cash in hand**, `bank` spend →
+  **in bank**, `personal` spend → neither (creates a reimbursement owed).
+- **Budget shortfall:** `Collected − Total Estimated` (negative = still to raise); per category `remaining`.
+
+**Per-member custody (Committee screen):**
+- `collected(m) = sum(donations where collected_by = m)` — split cash/bank by donation method.
+- `paid_from_fund(m) = sum(expenses where paid_by = m and source in (cash,bank))`.
+- `reimbursed_out(m) = sum(reimbursements where from_member_id = m)`.
+- **`holding(m) = collected(m) − paid_from_fund(m) − reimbursed_out(m)`** (cash & bank tracked separately).
+- `owed_back(m) = sum(personal expenses where paid_by = m) − sum(reimbursements where member_id = m)`.
+- **Over-spend flag:** raised if any member's `holding` goes negative (they spent fund money they weren't holding).
+
+**Editing:** any committee member can **add and edit any spend at any time**; deleting an entry is
+**admin-only** (protects the money trail). Donations follow the same rule.
+
+All calculations are **automatic and always accurate** — derived from rows on every render (never
+stored), using integer-rupee arithmetic so there is no rounding error.
 
 ## Features by part
 
@@ -116,9 +155,14 @@ and `expenses.spent_by` reference this id, so every entry is attributed to a com
 - **WhatsApp receipt:** "Share receipt" opens WhatsApp directly to the donor's number via a `wa.me/<phone>?text=<message>` deep link, prefilled with a thank-you, receipt number, amount, date, and a link to the receipt page. No API, no keys — the volunteer taps send.
 
 ### Part 2 — Track Spends
-- Form: **category (preset dropdown)**, **description** (what it was for — so it's remembered), amount, online/offline, optional payee/note.
-- On save: counts toward Total Spent and the linked category's actual; **Available Balance updates live** (computed).
-- Chronological expense list showing **category + description + amount** at a glance.
+- Form: **category (preset dropdown)**, **description** (what it was for — so it's remembered), amount
+  (with built-in calculator), **paid by** (committee member, defaults to the current user), and a
+  **"Paid from"** choice:
+  - **Committee fund** → then pick **Cash** or **Bank** (draws down that fund quota).
+  - **Self (out-of-pocket)** → logged as a **reimbursement owed** to the payer; fund untouched.
+- On save: counts toward Total Spent and the linked category's actual; **balances update live** (computed).
+- Any committee member can **edit any spend at any time**.
+- Chronological expense list showing **category + description + amount + who paid / source** at a glance.
 
 ### Part 3 — Estimates
 - Pre-seeded budget list (one line per category, ₹0 default) — fill in amounts.
@@ -137,8 +181,45 @@ and `expenses.spent_by` reference this id, so every entry is attributed to a com
 
 ## Auth & access
 
-- **Committee members:** Supabase Auth login; **anyone who logs in is a committee member** and can add donations, spends, estimates, and edit categories. A `committee_members` row is auto-created on first login. No role hierarchy in v1 (the optional `role` field is descriptive only).
-- **Public:** no login; read-only access to non-private fields via RLS / a public view.
+- **Login = mobile number + static password** (no email, no OTP, no self-signup). Credentials are
+  verified server-side via a Supabase `SECURITY DEFINER` RPC (`member_login`) that checks the
+  hashed password and returns safe member fields; `password_hash` is never exposed to the client.
+  Session is kept client-side (localStorage).
+- **Committee members:** any mobile number in `committee_members` can log in and add donations,
+  spends, estimates, and edit categories, and edit **their own** entries.
+- **Admins** (`is_admin = true` — the configured admin-numbers list) additionally can **delete/edit
+  any entry** and **manage committee & fund settings** (including adding members and granting admin).
+- **Public:** no login; read-only access to non-private fields via public views only.
+- **Security note (v1):** this is app-level auth with a shared Supabase anon key; adequate for a
+  small trusted committee, not hardened against a determined technical user. Upgradeable later.
+
+## Built-in calculator
+
+- A **calculator** is built into the **amount field** on both the donation and spend forms: tap the
+  calculator icon, add up cash as you count it (e.g. `500 + 500 + 200 + 100`), and the total drops
+  straight into the amount. Prevents mental-math errors during collection.
+- Also available as a standalone quick tool from the top bar. Standard operations, integer-rupee output.
+
+## Budget slider & shortfall
+
+- The Budget screen shows, per category, a **slider/progress bar of actual vs estimated** (fills toward
+  the estimate, turns red past it) with `spent / estimated` and **remaining/over**.
+- A prominent **overall shortfall**: `Total Estimated − Collected` — "how much we still need to raise",
+  and `Total Estimated − Total Spent` — "how much budget is left to spend".
+- Everything recomputes live as donations and spends change.
+
+## Reimbursements UX
+
+- On the **Committee** screen, each member shows **Collected · Holding (cash/bank) · Owed back**.
+- A member with `owed_back > 0` shows a **"Reimburse"** action → pick source (cash/bank) and the
+  holder paying (defaults to the main holder) → records a `reimbursements` row, clearing the owed
+  amount and drawing down fund cash/bank.
+
+## Engineering notes (v1)
+
+- **No automated tests** — build directly for speed, but keep the code **reliable**: TypeScript
+  strict mode, all money as integers, calculations centralized in pure `src/domain/*` functions,
+  verified by `tsc --noEmit` + `npm run build` + a manual click-through before merge.
 
 ## Receipt numbering
 
