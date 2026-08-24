@@ -47,7 +47,7 @@ export function useExportStatement() {
 
     const summary = computeBalance(donations, expenses, reimbursements)
     const year = fundSettingsQuery.data?.festival_year
-    const filename = year ? `atharva-nidhi-statement-${year}.xlsx` : 'atharva-nidhi-statement.xlsx'
+    const filename = year ? `atharvnidhi-statement-${year}.xlsx` : 'atharvnidhi-statement.xlsx'
 
     downloadStatement({ donations: donationRows, expenses: expenseRows, summary }, filename)
   }

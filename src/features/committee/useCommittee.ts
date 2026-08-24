@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import type { CommitteeMember, Expense, ReimbSource, Reimbursement } from '../../types/db'
+import type { CommitteeMember, ReimbSource, Reimbursement } from '../../types/db'
 
 export const committeeKeys = {
   members: ['committee', 'members'] as const,
-  expenses: ['committee', 'expenses'] as const,
   reimbursements: ['committee', 'reimbursements'] as const,
 }
 
@@ -21,19 +20,6 @@ export function useCommitteeMembers() {
         .order('name', { ascending: true })
       if (error) throw new Error(error.message)
       return data as CommitteeMember[]
-    },
-  })
-}
-
-// Local, self-contained queries for expenses/reimbursements — no shared
-// hook exists yet for these (a separate task builds one concurrently).
-export function useCommitteeExpenses() {
-  return useQuery({
-    queryKey: committeeKeys.expenses,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('expenses').select('*')
-      if (error) throw new Error(error.message)
-      return data as Expense[]
     },
   })
 }

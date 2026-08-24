@@ -28,10 +28,10 @@ export function LoginPage() {
     <div className="min-h-full grid place-items-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <p className="text-gold text-base" style={{ fontFamily: 'Noto Sans Devanagari, Nirmala UI, system-ui' }}>
-            ॥ श्री गणेशाय नमः ॥
+          <p className="text-gold text-base" style={{ fontFamily: 'Noto Sans Telugu, Gautami, Nirmala UI, system-ui' }}>
+            శ్రీ గణేశాయ నమః
           </p>
-          <h1 className="font-display text-3xl font-bold text-ink mt-1">Atharva Nidhi</h1>
+          <h1 className="font-display text-3xl font-bold text-ink mt-1">AtharvNidhi</h1>
           <p className="text-ink-soft text-sm mt-1">Committee login</p>
         </div>
 

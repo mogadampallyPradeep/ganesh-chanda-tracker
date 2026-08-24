@@ -46,7 +46,7 @@ export function TopBar() {
     navigate('/login', { replace: true })
   }
 
-  const mandalName = fundSettings.data?.mandal_name ?? 'Atharva Nidhi'
+  const mandalName = fundSettings.data?.mandal_name ?? 'AtharvNidhi'
 
   return (
     <header className="shrink-0 relative bg-surface border-b border-line px-4 py-3 flex items-center justify-between">
@@ -69,6 +69,7 @@ export function TopBar() {
         <>
           <div className="fixed inset-0 z-10" onClick={close} />
           <div className="absolute right-4 top-full mt-1 z-20 w-56 bg-surface border border-line rounded-xl shadow-md overflow-hidden">
+            <MenuItem label="Activity" onClick={() => go('/activity')} />
             <MenuItem label={copied ? 'Link copied!' : 'Share public link'} onClick={onShare} disabled={!publicUrl} />
             <MenuItem label="Export to Excel" onClick={onExport} disabled={!exportReady} />
             <MenuItem label="Categories" onClick={() => go('/categories')} />

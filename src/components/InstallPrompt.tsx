@@ -77,7 +77,7 @@ export function InstallPrompt() {
     <div className="shrink-0 bg-surface-2 border-t border-line px-4 py-2.5 flex items-center gap-3">
       <div className="flex-1 text-sm text-ink">
         {deferred ? (
-          <span>Install Atharva Nidhi for quick access.</span>
+          <span>Install AtharvNidhi for quick access.</span>
         ) : (
           <span>
             Install this app: tap <span className="font-semibold">Share</span> then{' '}

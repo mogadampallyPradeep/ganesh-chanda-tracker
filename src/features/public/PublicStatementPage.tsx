@@ -42,8 +42,8 @@ export function PublicStatementPage() {
   return (
     <div className="min-h-full p-4 sm:p-6 max-w-3xl mx-auto">
       <header className="text-center mb-6">
-        <p className="text-gold text-base" style={{ fontFamily: 'Noto Sans Devanagari, Nirmala UI, system-ui' }}>
-          ॥ श्री गणेशाय नमः ॥
+        <p className="text-gold text-base" style={{ fontFamily: 'Noto Sans Telugu, Gautami, Nirmala UI, system-ui' }}>
+          శ్రీ గణేశాయ నమః
         </p>
         <h1 className="font-display text-2xl font-bold text-ink mt-1">{mandalName}</h1>
         <p className="text-ink-soft text-sm mt-1">Public fund statement</p>

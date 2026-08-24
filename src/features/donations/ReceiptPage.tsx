@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { useDonation } from './useDonations'
+import { useFundSettings } from '../settings/useFundSettings'
 import { buildReceiptText, buildWhatsAppLink } from '../../domain/receipt'
 import { formatINR, formatDate } from '../../lib/format'
 import type { Donation } from '../../types/db'
@@ -33,8 +34,8 @@ export function ReceiptView({ mandalName, donation }: { mandalName: string; dona
     <div className="min-h-full grid place-items-center p-6">
       <div className="w-full max-w-sm">
         <div className="bg-surface border border-line rounded-2xl p-6 shadow-sm flex flex-col items-center gap-3 text-center">
-          <p className="text-gold text-base" style={{ fontFamily: 'Noto Sans Devanagari, Nirmala UI, system-ui' }}>
-            ॥ श्री गणेशाय नमः ॥
+          <p className="text-gold text-base" style={{ fontFamily: 'Noto Sans Telugu, Gautami, Nirmala UI, system-ui' }}>
+            శ్రీ గణేశాయ నమః
           </p>
           <h1 className="font-display text-2xl font-bold text-ink">{mandalName}</h1>
           <p className="text-ink-soft text-xs tracking-wide">
@@ -102,6 +103,7 @@ export function ReceiptView({ mandalName, donation }: { mandalName: string; dona
 export function ReceiptPage() {
   const { id } = useParams<{ id: string }>()
   const { data: donation, isLoading, isError } = useDonation(id ?? '')
+  const { data: fundSettings } = useFundSettings()
 
   if (isLoading) {
     return (
@@ -125,5 +127,5 @@ export function ReceiptPage() {
     )
   }
 
-  return <ReceiptView mandalName="Atharva Nidhi" donation={donation} />
+  return <ReceiptView mandalName={fundSettings?.mandal_name ?? 'AtharvNidhi'} donation={donation} />
 }

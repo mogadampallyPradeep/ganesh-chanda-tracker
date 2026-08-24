@@ -1,4 +1,4 @@
--- Atharva Nidhi — core schema
+-- AtharvNidhi — core schema
 -- Amounts are integer rupees. Phone number (mobile) is the primary identity.
 
 create extension if not exists pgcrypto;

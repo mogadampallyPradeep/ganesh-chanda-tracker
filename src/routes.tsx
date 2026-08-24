@@ -9,6 +9,7 @@ import { ReceiptPage } from './features/donations/ReceiptPage'
 import { ExpensesListPage } from './features/expenses/ExpensesListPage'
 import { ExpenseEditPage } from './features/expenses/ExpenseEditPage'
 import { BudgetPage } from './features/budget/BudgetPage'
+import { ActivityPage } from './features/activity/ActivityPage'
 import { CategoriesPage } from './features/categories/CategoriesPage'
 import { CommitteePage } from './features/committee/CommitteePage'
 import { FundSettingsPage } from './features/settings/FundSettingsPage'
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
           { path: '/spend', element: <ExpensesListPage /> },
           { path: '/spend/:id', element: <ExpenseEditPage /> },
           { path: '/budget', element: <BudgetPage /> },
+          { path: '/activity', element: <ActivityPage /> },
           { path: '/categories', element: <CategoriesPage /> },
           { path: '/committee', element: <CommitteePage /> },
           { path: '/settings', element: <FundSettingsPage /> },
