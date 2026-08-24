@@ -175,9 +175,62 @@ Invest in a polished, cohesive look driven by a proper design system — not ad-
   parts so the whole app feels like one designed product, and the Excel-style statement
   inherits the same tokens.
 
+## Navigation & screens (complete UX)
+
+**Model:** a persistent **bottom tab bar** (4 tabs) for volunteers + a **top app bar**
+(mandal name + overflow `⋮` menu). No hamburger — core actions are one tap away.
+
+- **Bottom tabs:** Home · Collect · Spend · Budget
+- **Overflow menu:** Share public link · Export to Excel · Categories · Volunteers · Fund settings · Sign out
+
+### Home (Dashboard)
+- Balance hero card: **Available Balance** (big) with Collected + Spent beneath.
+- Split card: **Cash in hand** (offline) · **In bank** (online).
+- Progress card: Collected vs Estimated budget (% + "need ₹X more").
+- Recent activity: last 5 entries (donations + spends).
+- Quick actions: `+ Collect Chanda`, `+ Add Spend`; `Share balance` in top bar.
+
+### Collect (chanda in)
+- List view (newest first) + search + `+ New Donation`.
+- Form: donor name · address · phone · amount · method toggle (offline/online) · optional note.
+- Buttons: `Save & Share Receipt` (primary), `Save only`.
+- Receipt screen after save: receipt no. `GNP2026-####`, amount, donor, date →
+  `Send Receipt on WhatsApp`, `Download / Print`, `Done`.
+- Row tap → view → edit.
+
+### Spend (money out)
+- List view (category + description + amount) + `+ New Spend`.
+- Form: category (preset dropdown) · **description** (what it's for) · amount · method toggle · optional payee.
+- Buttons: `Save Spend`, `Cancel`. Row tap → view → edit.
+
+### Budget (Estimates)
+- Planned-vs-actual table: per category `spent / estimated` + fill bar (green, red when over), Total row.
+- `Edit Estimates` opens pre-seeded category list (₹0 default) to fill amounts.
+- Per-row tap → its linked spends; **Unbudgeted** bucket for spends with no estimate.
+
+### Overflow / admin
+- Share public link (copy · WhatsApp · QR); Export to Excel (donations + spends + summary);
+  Categories (list, add, rename, reorder, remove — Miscellaneous locked); Volunteers (invite);
+  Fund settings (mandal name, festival year, receipt prefix, currency); Sign out.
+
+### Public statement (no login — shared link)
+- Excel-style **Chanda Received** table (name + amount only) + balance summary + spends summary.
+- Buttons: `Share on WhatsApp`, `Export to Excel`. Read-only; phone/address never shown.
+
+### UX conventions
+- Row tap opens **view → edit** (no inline editing).
+- **Delete** lives behind the edit screen (not swipe) to protect money records.
+
 ## Open items for the implementation plan
 
 - Static host choice (Vercel/Netlify vs Railway).
 - Exact RLS policies / public view definition for privacy.
 - Receipt-number generation mechanism (sequence vs function).
 - PWA manifest + icon.
+
+## Provisioned resources
+
+- **GitHub:** `mogadampallyPradeep/ganesh-chanda-tracker` (personal account).
+- **Supabase project:** ref `kzlsuosriuahkqrmiiac`.
+- **Approved visual mockups:** see the published UI/UX mockups (traditional festival theme,
+  all screens + public statement).
