@@ -46,7 +46,7 @@ export function TopBar() {
     navigate('/login', { replace: true })
   }
 
-  const mandalName = fundSettings.data?.mandal_name ?? 'Atharva Nidhi'
+  const mandalName = fundSettings.data?.mandal_name ?? 'AtharvNidhi'
 
   return (
     <header className="shrink-0 relative bg-surface border-b border-line px-4 py-3 flex items-center justify-between">

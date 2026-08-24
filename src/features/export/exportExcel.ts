@@ -17,7 +17,7 @@ export function buildWorkbook(input: {
 
 export function downloadStatement(
   input: Parameters<typeof buildWorkbook>[0],
-  filename = 'atharva-nidhi-statement.xlsx'
+  filename = 'atharvnidhi-statement.xlsx'
 ) {
   XLSX.writeFile(buildWorkbook(input), filename)
 }

@@ -10,8 +10,8 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         id: '/',
-        name: 'Atharva Nidhi',
-        short_name: 'Atharva',
+        name: 'AtharvNidhi',
+        short_name: 'AtharvNidhi',
         description: 'Collect chanda, track spends, and share the balance for your Ganesh mandal.',
         lang: 'en',
         dir: 'ltr',

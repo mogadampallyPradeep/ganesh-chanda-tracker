@@ -98,8 +98,8 @@ export function HomePage() {
   return (
     <div className="p-4 flex flex-col gap-4 max-w-2xl mx-auto w-full">
       <header className="text-center">
-        <p className="text-gold text-sm" style={{ fontFamily: 'Noto Sans Devanagari, Nirmala UI, system-ui' }}>
-          ॥ श्री गणेशाय नमः ॥
+        <p className="text-gold text-sm" style={{ fontFamily: 'Noto Sans Telugu, Gautami, Nirmala UI, system-ui' }}>
+          శ్రీ గణేశాయ నమః
         </p>
         <p className="text-ink-soft text-sm mt-0.5">
           Namaste, <b className="text-ink">{member?.name}</b>
