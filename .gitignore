@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+.vercel/
+.netlify/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Supabase
+supabase/.branches
+supabase/.temp
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
