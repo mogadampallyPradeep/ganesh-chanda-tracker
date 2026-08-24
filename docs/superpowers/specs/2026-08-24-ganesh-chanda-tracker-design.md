@@ -87,6 +87,19 @@ Screen is **pre-seeded with all categories at ₹0**; volunteer fills in amounts
 
 Expenses whose category has no estimate line still count in Total Spent, surfaced as an **"Unbudgeted"** bucket in the comparison view.
 
+### `committee_members` — who runs the fund
+| field | type | notes |
+|---|---|---|
+| id | uuid pk | **equals the Supabase auth user id** |
+| name | text | shown on the Committee screen; defaults from email, editable |
+| phone | text | optional |
+| role | text | optional free-text (e.g. President, Treasurer); no access effect in v1 |
+| joined_at | timestamptz | first login |
+
+**Anyone who logs in is a committee member.** On first successful login the app
+auto-provisions a `committee_members` row for that auth user (id = user id). `donations.collected_by`
+and `expenses.spent_by` reference this id, so every entry is attributed to a committee member.
+
 ### Derived (never stored — always computed for correctness)
 - `Total Collected = sum(donations.amount)`
 - `Total Spent = sum(expenses.amount)`
@@ -124,7 +137,7 @@ Expenses whose category has no estimate line still count in Total Spent, surface
 
 ## Auth & access
 
-- **Volunteers:** Supabase Auth login; any logged-in volunteer can add donations, spends, estimates, and edit categories. No role hierarchy in v1.
+- **Committee members:** Supabase Auth login; **anyone who logs in is a committee member** and can add donations, spends, estimates, and edit categories. A `committee_members` row is auto-created on first login. No role hierarchy in v1 (the optional `role` field is descriptive only).
 - **Public:** no login; read-only access to non-private fields via RLS / a public view.
 
 ## Receipt numbering
@@ -181,7 +194,7 @@ Invest in a polished, cohesive look driven by a proper design system — not ad-
 (mandal name + overflow `⋮` menu). No hamburger — core actions are one tap away.
 
 - **Bottom tabs:** Home · Collect · Spend · Budget
-- **Overflow menu:** Share public link · Export to Excel · Categories · Volunteers · Fund settings · Sign out
+- **Overflow menu:** Share public link · Export to Excel · Categories · Committee · Fund settings · Sign out
 
 ### Home (Dashboard)
 - Balance hero card: **Available Balance** (big) with Collected + Spent beneath.
@@ -210,8 +223,13 @@ Invest in a polished, cohesive look driven by a proper design system — not ad-
 
 ### Overflow / admin
 - Share public link (copy · WhatsApp · QR); Export to Excel (donations + spends + summary);
-  Categories (list, add, rename, reorder, remove — Miscellaneous locked); Volunteers (invite);
-  Fund settings (mandal name, festival year, receipt prefix, currency); Sign out.
+  Categories (list, add, rename, reorder, remove — Miscellaneous locked);
+  Committee (see below); Fund settings (mandal name, festival year, receipt prefix, currency); Sign out.
+
+### Committee
+- Lists all committee members (name · role · phone), newest first, with the **current user highlighted**.
+- Anyone who logs in appears here automatically; each member can **edit their own** name/role/phone.
+- Shows **how much each member has collected** (sum of their donations) for accountability.
 
 ### Public statement (no login — shared link)
 - Excel-style **Chanda Received** table (name + amount only) + balance summary + spends summary.
