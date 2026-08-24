@@ -3,13 +3,13 @@ import { useAuth } from '../auth/useAuth'
 import { useDonations } from '../donations/useDonations'
 import {
   useAddMember,
-  useCommitteeExpenses,
   useCommitteeMembers,
   useCommitteeReimbursements,
   useRemoveMember,
   useSetMemberAdmin,
   useSettleReimbursement,
 } from './useCommittee'
+import { useExpenses } from '../expenses/useExpenses'
 import { computeHoldings, type MemberHolding } from '../../domain/holdings'
 import { AmountInput } from '../../components/common/AmountInput'
 import { StatCard } from '../../components/common/StatCard'
@@ -20,7 +20,7 @@ export function CommitteePage() {
   const { member: currentMember, isAdmin } = useAuth()
   const membersQuery = useCommitteeMembers()
   const donationsQuery = useDonations()
-  const expensesQuery = useCommitteeExpenses()
+  const expensesQuery = useExpenses()
   const reimbursementsQuery = useCommitteeReimbursements()
 
   const loading =
