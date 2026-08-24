@@ -3,9 +3,15 @@ import { LoginPage } from './features/auth/LoginPage'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { AppShell } from './components/layout/AppShell'
 import { HomePage } from './features/home/HomePage'
-import { CollectPage } from './features/collect/CollectPage'
-import { SpendPage } from './features/spend/SpendPage'
+import { DonationsListPage } from './features/donations/DonationsListPage'
+import { DonationEditPage } from './features/donations/DonationEditPage'
+import { ReceiptPage } from './features/donations/ReceiptPage'
+import { ExpensesListPage } from './features/expenses/ExpensesListPage'
+import { ExpenseEditPage } from './features/expenses/ExpenseEditPage'
 import { BudgetPage } from './features/budget/BudgetPage'
+import { CategoriesPage } from './features/categories/CategoriesPage'
+import { CommitteePage } from './features/committee/CommitteePage'
+import { FundSettingsPage } from './features/settings/FundSettingsPage'
 import { PublicStatementPage } from './features/public/PublicStatementPage'
 
 export const router = createBrowserRouter([
@@ -18,9 +24,15 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { path: '/', element: <HomePage /> },
-          { path: '/collect', element: <CollectPage /> },
-          { path: '/spend', element: <SpendPage /> },
+          { path: '/collect', element: <DonationsListPage /> },
+          { path: '/collect/:id', element: <DonationEditPage /> },
+          { path: '/collect/:id/receipt', element: <ReceiptPage /> },
+          { path: '/spend', element: <ExpensesListPage /> },
+          { path: '/spend/:id', element: <ExpenseEditPage /> },
           { path: '/budget', element: <BudgetPage /> },
+          { path: '/categories', element: <CategoriesPage /> },
+          { path: '/committee', element: <CommitteePage /> },
+          { path: '/settings', element: <FundSettingsPage /> },
         ],
       },
     ],

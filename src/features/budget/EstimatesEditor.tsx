@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AmountInput } from '../../components/common/AmountInput'
 import { useUpsertEstimate } from './useEstimates'
+import { useCreateCategory } from '../categories/useCategories'
 import type { Category, Estimate } from '../../types/db'
 
 // One AmountInput per category (already ordered by display_order by the caller),
@@ -16,12 +17,22 @@ export function EstimatesEditor({
   onDone: () => void
 }) {
   const upsertEstimate = useUpsertEstimate()
+  const createCategory = useCreateCategory()
   const estByCat = new Map(estimates.map((e) => [e.category_id, e.estimated_amount]))
 
   const [drafts, setDrafts] = useState<Record<string, number>>(() =>
     Object.fromEntries(categories.map((c) => [c.id, estByCat.get(c.id) ?? 0])),
   )
   const [savedId, setSavedId] = useState<string | null>(null)
+  const [newCategory, setNewCategory] = useState('')
+
+  const addCategory = async () => {
+    const name = newCategory.trim()
+    if (name === '') return
+    const nextOrder = categories.reduce((max, c) => Math.max(max, c.display_order), 0) + 1
+    await createCategory.mutateAsync({ name, display_order: nextOrder })
+    setNewCategory('')
+  }
 
   const save = async (categoryId: string) => {
     const estimated_amount = drafts[categoryId] ?? 0
@@ -67,6 +78,37 @@ export function EstimatesEditor({
             </button>
           </label>
         ))}
+      </div>
+
+      <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+        <span className="text-xs text-ink-soft tracking-wide">Add a category</span>
+        {createCategory.isError && (
+          <p className="text-neg text-sm">
+            {createCategory.error instanceof Error ? createCategory.error.message : 'Could not add category'}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <input
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void addCategory()
+              }
+            }}
+            placeholder="e.g. Sound system"
+            className="flex-1 border border-line bg-bg rounded-xl px-3.5 py-3 text-ink text-base outline-none focus:border-primary"
+          />
+          <button
+            type="button"
+            disabled={createCategory.isPending || newCategory.trim() === ''}
+            onClick={() => void addCategory()}
+            className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-white bg-primary-deep disabled:opacity-50"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   )
