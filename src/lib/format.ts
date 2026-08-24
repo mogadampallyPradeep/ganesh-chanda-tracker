@@ -7,8 +7,15 @@ export function formatINR(n: number): string {
 }
 
 export function formatDate(iso: string): string {
+  // Render in IST — created_at is stored UTC (timestamptz); using UTC here would
+  // show the previous day for entries made late evening India time.
   return new Date(iso)
-    .toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
+    .toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Asia/Kolkata',
+    })
     .replace(/,/g, '')
 }
 

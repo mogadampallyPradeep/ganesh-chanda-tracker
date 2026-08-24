@@ -8,6 +8,7 @@ import {
   useRemoveMember,
   useSetMemberAdmin,
   useSettleReimbursement,
+  useUpdateMemberName,
 } from './useCommittee'
 import { useExpenses } from '../expenses/useExpenses'
 import { computeHoldings, type MemberHolding } from '../../domain/holdings'
@@ -124,12 +125,27 @@ function MemberCard({
   onStartSettle: () => void
   onCancelSettle: () => void
 }) {
+  const { refreshMember } = useAuth()
   const settleReimbursement = useSettleReimbursement()
   const setMemberAdmin = useSetMemberAdmin()
   const removeMember = useRemoveMember()
+  const updateName = useUpdateMemberName()
 
   const [amount, setAmount] = useState(holding.owedBack)
   const [source, setSource] = useState<ReimbSource>('cash')
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(holding.name)
+
+  const saveName = async () => {
+    const name = nameDraft.trim()
+    if (name === '' || name === holding.name) {
+      setEditingName(false)
+      return
+    }
+    await updateName.mutateAsync({ mobile: holding.mobile, name, is_admin: holding.isAdmin })
+    if (isCurrentUser) await refreshMember() // keep the top bar / session in sync
+    setEditingName(false)
+  }
 
   // Reset defaults (full owed amount, cash) each time the settle form opens.
   const openSettle = () => {
@@ -156,17 +172,63 @@ function MemberCard({
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-semibold text-ink flex items-center gap-1.5 flex-wrap">
-            {holding.name}
-            {holding.isAdmin && (
-              <span className="text-[10px] font-bold uppercase tracking-wide text-primary-deep bg-primary/10 rounded-full px-1.5 py-0.5">
-                Admin
-              </span>
-            )}
-            {isCurrentUser && <span className="text-[10px] font-semibold text-ink-soft">(you)</span>}
-          </p>
-          <p className="text-xs text-ink-soft mt-0.5">{formatMobile(holding.mobile)}</p>
+        <div className="min-w-0">
+          {editingName ? (
+            <div className="flex flex-col gap-2">
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void saveName()
+                  if (e.key === 'Escape') setEditingName(false)
+                }}
+                className="border border-line bg-bg rounded-lg px-3 py-2 text-ink text-base outline-none focus:border-primary"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={updateName.isPending || nameDraft.trim() === ''}
+                  onClick={() => void saveName()}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white bg-primary-deep disabled:opacity-50"
+                >
+                  {updateName.isPending ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingName(false)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-soft border border-line"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="font-semibold text-ink flex items-center gap-1.5 flex-wrap">
+                {holding.name}
+                {holding.isAdmin && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-primary-deep bg-primary/10 rounded-full px-1.5 py-0.5">
+                    Admin
+                  </span>
+                )}
+                {isCurrentUser && <span className="text-[10px] font-semibold text-ink-soft">(you)</span>}
+                {isCurrentUser && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameDraft(holding.name)
+                      setEditingName(true)
+                    }}
+                    className="text-[10px] font-semibold text-primary-deep underline"
+                  >
+                    Edit
+                  </button>
+                )}
+              </p>
+              <p className="text-xs text-ink-soft mt-0.5">{formatMobile(holding.mobile)}</p>
+            </>
+          )}
         </div>
         {holding.owedBack > 0 && (
           <div className="text-right">
