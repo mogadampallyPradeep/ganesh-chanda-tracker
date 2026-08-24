@@ -12,6 +12,7 @@ export interface AuthValue {
   loading: boolean
   signIn: (mobile: string, password: string) => Promise<void>
   signOut: () => void
+  refreshMember: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthValue | null>(null)

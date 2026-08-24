@@ -85,6 +85,29 @@ export function useAddMember() {
   })
 }
 
+// Rename a member. add_member is an upsert; on an existing mobile it updates
+// name + is_admin only (password_hash is left untouched), so passing the member's
+// current is_admin renames them without changing their role or password. Used for
+// self "edit my name" — the placeholder password is ignored on the conflict path.
+export function useUpdateMemberName() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ mobile, name, is_admin }: { mobile: string; name: string; is_admin: boolean }) => {
+      const { error } = await supabase.rpc('add_member', {
+        p_mobile: mobile,
+        p_name: name,
+        p_password: '__unchanged__',
+        p_is_admin: is_admin,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: committeeKeys.members })
+    },
+  })
+}
+
 export function useSetMemberAdmin() {
   const queryClient = useQueryClient()
 
