@@ -1,4 +1,4 @@
-# Ganesh Chanda Tracker — Design Spec
+# Atharva Nidhi — Design Spec
 
 **Date:** 2026-08-24
 **Status:** Approved design → ready for implementation plan

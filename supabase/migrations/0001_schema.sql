@@ -1,4 +1,4 @@
--- Ganesh Chanda Tracker — core schema
+-- Atharva Nidhi — core schema
 -- Amounts are integer rupees. Phone number (mobile) is the primary identity.
 
 create extension if not exists pgcrypto;

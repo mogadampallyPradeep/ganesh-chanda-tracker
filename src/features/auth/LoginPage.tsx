@@ -31,7 +31,7 @@ export function LoginPage() {
           <p className="text-gold text-base" style={{ fontFamily: 'Noto Sans Devanagari, Nirmala UI, system-ui' }}>
             ॥ श्री गणेशाय नमः ॥
           </p>
-          <h1 className="font-display text-3xl font-bold text-ink mt-1">Ganesh Chanda</h1>
+          <h1 className="font-display text-3xl font-bold text-ink mt-1">Atharva Nidhi</h1>
           <p className="text-ink-soft text-sm mt-1">Committee login</p>
         </div>
 

@@ -9,7 +9,7 @@ export function HomePage() {
         <p className="text-gold" style={{ fontFamily: 'Noto Sans Devanagari, Nirmala UI, system-ui' }}>
           ॥ श्री गणेशाय नमः ॥
         </p>
-        <h1 className="font-display text-3xl font-bold text-ink mt-1">Ganesh Chanda</h1>
+        <h1 className="font-display text-3xl font-bold text-ink mt-1">Atharva Nidhi</h1>
         <p className="text-ink-soft mt-2">
           Signed in as <b className="text-ink">{member?.name}</b>
           {isAdmin && <span className="ml-1 text-primary-deep">(admin)</span>}. Screens are being built.

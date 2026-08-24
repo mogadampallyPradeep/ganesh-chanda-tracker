@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Ganesh Chanda',
-        short_name: 'Chanda',
+        name: 'Atharva Nidhi',
+        short_name: 'Atharva',
         description: 'Collect chanda, track spends, and share the balance for your Ganesh mandal.',
         display: 'standalone',
         theme_color: '#E5860A',

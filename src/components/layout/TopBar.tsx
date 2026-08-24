@@ -17,7 +17,7 @@ export function TopBar() {
 
   return (
     <header className="shrink-0 relative bg-surface border-b border-line px-4 py-3 flex items-center justify-between">
-      <span className="font-display text-lg font-bold text-ink">Ganesh Chanda</span>
+      <span className="font-display text-lg font-bold text-ink">Atharva Nidhi</span>
 
       <button
         type="button"

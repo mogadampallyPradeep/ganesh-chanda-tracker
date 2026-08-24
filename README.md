@@ -1,4 +1,4 @@
-# Ganesh Chanda Tracker
+# Atharva Nidhi
 
 A simple, installable app for a Ganesh Chaturthi mandal to collect chanda (donations),
 track spends against a live balance, and plan the festival budget — with a shareable
