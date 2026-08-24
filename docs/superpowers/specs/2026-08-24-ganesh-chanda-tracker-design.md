@@ -1,4 +1,4 @@
-# Ganesh Chanda Tracker — Design Spec
+# Atharva Nidhi — Design Spec
 
 **Date:** 2026-08-24
 **Status:** Approved design → ready for implementation plan
@@ -211,9 +211,12 @@ stored), using integer-rupee arithmetic so there is no rounding error.
 ## Reimbursements UX
 
 - On the **Committee** screen, each member shows **Collected · Holding (cash/bank) · Owed back**.
-- A member with `owed_back > 0` shows a **"Reimburse"** action → pick source (cash/bank) and the
-  holder paying (defaults to the main holder) → records a `reimbursements` row, clearing the owed
-  amount and drawing down fund cash/bank.
+- A member with `owed_back > 0` shows a **"Settle"** action. The fund holder (X) taps it to
+  **pay the member back and mark it done** — defaults to the **full owed amount**, **offline (cash)**,
+  paid by the current holder. This records a `reimbursements` row that **clears that member's owed
+  back to ₹0** and **draws the amount down from fund cash** (X's holding).
+- Amount and source (cash/bank) are editable for partial settlements; the owed reduces by whatever
+  is settled. A running list of past settlements is kept per member.
 
 ## Engineering notes (v1)
 

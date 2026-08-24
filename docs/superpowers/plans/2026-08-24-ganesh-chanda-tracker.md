@@ -1,4 +1,4 @@
-# Ganesh Chanda Tracker Implementation Plan
+# Atharva Nidhi Implementation Plan
 
 > **For agentic workers:** the **spec is the authoritative source of truth** — read it first
 > (`docs/superpowers/specs/2026-08-24-ganesh-chanda-tracker-design.md`). The task breakdown below

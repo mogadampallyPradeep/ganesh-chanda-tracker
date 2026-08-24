@@ -1,0 +1,56 @@
+import { useCategories } from '../categories/useCategories'
+import { useDonations } from '../donations/useDonations'
+import { useExpenses } from '../expenses/useExpenses'
+import { useCommitteeReimbursements } from '../committee/useCommittee'
+import { useFundSettings } from '../settings/useFundSettings'
+import { computeBalance } from '../../domain/balance'
+import { downloadStatement } from './exportExcel'
+import type { PublicDonationRow, PublicExpenseRow } from '../../domain/statement'
+
+// Assembles the full (authenticated) statement from the already-cached queries
+// and downloads it as an .xlsx. Returns a ready flag so callers can disable the
+// action until the underlying data is loaded.
+export function useExportStatement() {
+  const categoriesQuery = useCategories()
+  const donationsQuery = useDonations()
+  const expensesQuery = useExpenses()
+  const reimbursementsQuery = useCommitteeReimbursements()
+  const fundSettingsQuery = useFundSettings()
+
+  const ready =
+    categoriesQuery.isSuccess &&
+    donationsQuery.isSuccess &&
+    expensesQuery.isSuccess &&
+    reimbursementsQuery.isSuccess
+
+  const exportNow = () => {
+    if (!ready) return
+    const categories = categoriesQuery.data ?? []
+    const donations = donationsQuery.data ?? []
+    const expenses = expensesQuery.data ?? []
+    const reimbursements = reimbursementsQuery.data ?? []
+    const categoryName = new Map(categories.map((c) => [c.id, c.name]))
+
+    const donationRows: PublicDonationRow[] = donations.map((d) => ({
+      receipt_no: d.receipt_no,
+      donor_name: d.donor_name,
+      amount: d.amount,
+      method: d.method,
+    }))
+
+    const expenseRows: PublicExpenseRow[] = expenses.map((e) => ({
+      category_name: categoryName.get(e.category_id) ?? 'Uncategorised',
+      description: e.description,
+      amount: e.amount,
+      source: e.source,
+    }))
+
+    const summary = computeBalance(donations, expenses, reimbursements)
+    const year = fundSettingsQuery.data?.festival_year
+    const filename = year ? `atharva-nidhi-statement-${year}.xlsx` : 'atharva-nidhi-statement.xlsx'
+
+    downloadStatement({ donations: donationRows, expenses: expenseRows, summary }, filename)
+  }
+
+  return { exportNow, ready }
+}
