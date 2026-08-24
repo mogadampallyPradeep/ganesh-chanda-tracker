@@ -32,3 +32,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Superpowers subagent-driven-development scratch
+.superpowers/
