@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { donationSchema, type DonationInput } from './donationSchema'
-import { useCreateDonation, type CreateDonationInput } from './useDonations'
+import { useCreateDonation, useUpdateDonation, type CreateDonationInput } from './useDonations'
 import { MethodToggle } from '../../components/common/MethodToggle'
 import { AmountInput } from '../../components/common/AmountInput'
 import type { Donation } from '../../types/db'
@@ -15,10 +15,13 @@ const blankToNull = (value: string | undefined) => {
 }
 
 export function DonationForm({
+  donation,
   onSaved,
 }: {
+  donation?: Donation
   onSaved: (donation: Donation, action: SaveAction) => void
 }) {
+  const isEdit = donation != null
   const {
     control,
     register,
@@ -26,17 +29,27 @@ export function DonationForm({
     formState: { errors },
   } = useForm<DonationInput>({
     resolver: zodResolver(donationSchema),
-    defaultValues: {
-      donor_name: '',
-      address: '',
-      phone: '',
-      amount: 0,
-      method: 'offline',
-      note: '',
-    },
+    defaultValues: donation
+      ? {
+          donor_name: donation.donor_name,
+          address: donation.address ?? '',
+          phone: donation.phone ?? '',
+          amount: donation.amount,
+          method: donation.method,
+          note: donation.note ?? '',
+        }
+      : {
+          donor_name: '',
+          address: '',
+          phone: '',
+          amount: 0,
+          method: 'offline',
+          note: '',
+        },
   })
 
   const createDonation = useCreateDonation()
+  const updateDonation = useUpdateDonation()
   const [pendingAction, setPendingAction] = useState<SaveAction | null>(null)
 
   const submit = async (data: DonationInput, action: SaveAction) => {
@@ -50,13 +63,16 @@ export function DonationForm({
         method: data.method,
         note: blankToNull(data.note),
       }
-      const donation = await createDonation.mutateAsync(input)
-      onSaved(donation, action)
+      const saved = isEdit
+        ? await updateDonation.mutateAsync({ id: donation.id, ...input })
+        : await createDonation.mutateAsync(input)
+      onSaved(saved, action)
     } finally {
       setPendingAction(null)
     }
   }
 
+  const activeMutation = isEdit ? updateDonation : createDonation
   const busy = pendingAction !== null
 
   return (
@@ -119,28 +135,41 @@ export function DonationForm({
           />
         </label>
 
-        {createDonation.isError && (
+        {activeMutation.isError && (
           <p className="text-neg text-sm">
-            {createDonation.error instanceof Error ? createDonation.error.message : 'Could not save donation'}
+            {activeMutation.error instanceof Error ? activeMutation.error.message : 'Could not save donation'}
           </p>
         )}
 
-        <button
-          type="button"
-          disabled={busy}
-          onClick={handleSubmit((data) => submit(data, 'share'))}
-          className="mt-1 rounded-xl py-3 font-bold text-white bg-gradient-to-b from-primary to-primary-deep disabled:opacity-50"
-        >
-          {pendingAction === 'share' ? 'Saving…' : 'Save & Share Receipt'}
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={handleSubmit((data) => submit(data, 'save'))}
-          className="rounded-xl py-3 font-semibold text-ink bg-surface-2 border border-line disabled:opacity-50"
-        >
-          {pendingAction === 'save' ? 'Saving…' : 'Save only'}
-        </button>
+        {isEdit ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={handleSubmit((data) => submit(data, 'save'))}
+            className="mt-1 rounded-xl py-3 font-bold text-white bg-gradient-to-b from-primary to-primary-deep disabled:opacity-50"
+          >
+            {pendingAction === 'save' ? 'Saving…' : 'Save'}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleSubmit((data) => submit(data, 'share'))}
+              className="mt-1 rounded-xl py-3 font-bold text-white bg-gradient-to-b from-primary to-primary-deep disabled:opacity-50"
+            >
+              {pendingAction === 'share' ? 'Saving…' : 'Save & Share Receipt'}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleSubmit((data) => submit(data, 'save'))}
+              className="rounded-xl py-3 font-semibold text-ink bg-surface-2 border border-line disabled:opacity-50"
+            >
+              {pendingAction === 'save' ? 'Saving…' : 'Save only'}
+            </button>
+          </>
+        )}
       </div>
     </form>
   )
