@@ -182,7 +182,16 @@ export function HomePage() {
 
       {/* Recent activity */}
       <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
-        <p className="font-semibold text-ink mb-2">Recent activity</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="font-semibold text-ink">Recent activity</p>
+          <button
+            type="button"
+            onClick={() => navigate('/activity')}
+            className="text-sm font-semibold text-primary-deep"
+          >
+            See all →
+          </button>
+        </div>
         {recent.length === 0 ? (
           <p className="text-ink-soft text-sm">No entries yet. Start by collecting chanda.</p>
         ) : (
