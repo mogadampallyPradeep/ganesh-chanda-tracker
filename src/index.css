@@ -2,55 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Colors are stored as space-separated RGB channels (not hex) so Tailwind can
+   apply opacity modifiers via rgb(var(--x) / <alpha-value>) — e.g. bg-primary/10.
+   --bezel is a raw hex (not a Tailwind color) and stays as-is. */
 :root {
-  --bg: #FBF4E6;
-  --surface: #FFFDF7;
-  --surface-2: #F6EAD2;
-  --ink: #3A2A18;
-  --ink-soft: #836A4A;
-  --line: #E7D7B8;
-  --primary: #E5860A;
-  --primary-deep: #B96500;
-  --red: #A81E24;
-  --gold: #B98C1E;
-  --pos: #2E7D4F;
-  --neg: #A81E24;
-  --wa: #128C4B;
+  --bg: 251 244 230;
+  --surface: 255 253 247;
+  --surface-2: 246 234 210;
+  --ink: 58 42 24;
+  --ink-soft: 131 106 74;
+  --line: 231 215 184;
+  --primary: 229 134 10;
+  --primary-deep: 185 101 0;
+  --red: 168 30 36;
+  --gold: 185 140 30;
+  --pos: 46 125 79;
+  --neg: 168 30 36;
+  --wa: 18 140 75;
   --bezel: #17110A;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #211710;
-    --surface: #2C2014;
-    --surface-2: #3A2B1A;
-    --ink: #F5E9D2;
-    --ink-soft: #C2AB84;
-    --line: #4A3924;
-    --primary: #F2A62E;
-    --primary-deep: #E5860A;
-    --red: #E5726F;
-    --gold: #DDB856;
-    --pos: #56C088;
-    --neg: #E5726F;
-    --wa: #25B265;
+    --bg: 33 23 16;
+    --surface: 44 32 20;
+    --surface-2: 58 43 26;
+    --ink: 245 233 210;
+    --ink-soft: 194 171 132;
+    --line: 74 57 36;
+    --primary: 242 166 46;
+    --primary-deep: 229 134 10;
+    --red: 229 114 111;
+    --gold: 221 184 86;
+    --pos: 86 192 136;
+    --neg: 229 114 111;
+    --wa: 37 178 101;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg: #211710;
-  --surface: #2C2014;
-  --surface-2: #3A2B1A;
-  --ink: #F5E9D2;
-  --ink-soft: #C2AB84;
-  --line: #4A3924;
-  --primary: #F2A62E;
-  --primary-deep: #E5860A;
-  --red: #E5726F;
-  --gold: #DDB856;
-  --pos: #56C088;
-  --neg: #E5726F;
-  --wa: #25B265;
+  --bg: 33 23 16;
+  --surface: 44 32 20;
+  --surface-2: 58 43 26;
+  --ink: 245 233 210;
+  --ink-soft: 194 171 132;
+  --line: 74 57 36;
+  --primary: 242 166 46;
+  --primary-deep: 229 134 10;
+  --red: 229 114 111;
+  --gold: 221 184 86;
+  --pos: 86 192 136;
+  --neg: 229 114 111;
+  --wa: 37 178 101;
 }
 
 html,
@@ -61,8 +64,8 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--ink);
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
   font-family: var(--font-ui, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
