@@ -1070,6 +1070,22 @@ git commit -m "feat(statement): public view and export show committed vs paid"
 
 Run this **only after Tasks 1–10 are deployed and working**. This is the one destructive step in the feature, and by this point nothing reads the columns.
 
+**There is no two-step order that avoids a broken window, so this task is three steps.** `expenses.source` is `spend_source NOT NULL` with no default:
+
+- Drop the column first → the *currently deployed* code still writes `source` on every insert, and every new spend fails until the new code ships.
+- Deploy the new code first → it stops writing `source`, and every insert fails the `NOT NULL` constraint.
+
+Either order breaks expense creation for the length of a deploy. The fix is to
+make the column optional before either:
+
+1. **Migration `0011a`** — `alter table expenses alter column source drop not null;`
+   Safe on its own: old code keeps writing the column, new code may omit it.
+2. **Deploy** the code that stops writing `source` and `paid_by`.
+3. **Migration `0011b`** — drop both columns, once nothing has written them for a
+   full session.
+
+Steps 1 and 3 are separate files applied at different times. Do not collapse them.
+
 - [ ] **Step 1: Confirm nothing reads them**
 
 ```bash
@@ -1082,7 +1098,16 @@ Expected: no hits referring to an `Expense`. Fix any that remain before continui
 - [ ] **Step 2: Write the migration**
 
 ```sql
--- supabase/migrations/0011_drop_expense_source.sql
+-- supabase/migrations/0011a_source_nullable.sql
+-- Step 1 of 3. Makes the superseded column optional so the deploy in step 2 has
+-- no failing window. Reversible, and safe to sit in this state indefinitely.
+
+alter table expenses alter column source drop not null;
+```
+
+```sql
+-- supabase/migrations/0011b_drop_expense_source.sql
+-- Step 3 of 3. Run ONLY after the code from step 2 is live and has been used.
 -- Phase 2. These columns were superseded by expense_payments in 0008 and their
 -- values were copied there by that migration's backfill. Nothing reads them.
 --
