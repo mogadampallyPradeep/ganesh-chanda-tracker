@@ -1,13 +1,19 @@
-import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useEffect, useState } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { expenseSchema, type ExpenseInput } from './expenseSchema'
-import { useCreateExpense, useUpdateExpense, type CreateExpenseInput } from './useExpenses'
+import {
+  useCreateExpenseWithPayment,
+  useUpdateExpense,
+  type CreateExpenseInput,
+  type CreateExpenseWithPaymentInput,
+} from './useExpenses'
 import { useCategories } from '../categories/useCategories'
 import { useCommitteeMembers } from '../committee/useCommittee'
 import { useAuth } from '../auth/useAuth'
 import { CategorySelect } from '../../components/common/CategorySelect'
 import { AmountInput } from '../../components/common/AmountInput'
+import { formatINR } from '../../lib/format'
 import type { Expense, SpendSource } from '../../types/db'
 
 const blankToNull = (value: string | undefined) => {
@@ -67,6 +73,7 @@ export function ExpenseForm({
     control,
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<ExpenseInput>({
     resolver: zodResolver(expenseSchema),
@@ -76,6 +83,7 @@ export function ExpenseForm({
           description: expense.description,
           payee: expense.payee ?? '',
           amount: expense.amount,
+          paid_now: expense.amount,
           paid_by: expense.paid_by ?? '',
           source: expense.source,
           note: expense.note ?? '',
@@ -85,38 +93,62 @@ export function ExpenseForm({
           description: '',
           payee: '',
           amount: 0,
+          paid_now: 0,
           paid_by: member?.mobile ?? '',
           source: 'cash',
           note: '',
         },
   })
 
-  const createExpense = useCreateExpense()
+  const amount = useWatch({ control, name: 'amount' })
+  const paidNow = useWatch({ control, name: 'paid_now' })
+  const [paidNowTouched, setPaidNowTouched] = useState(false)
+
+  // Mirror the total until the user takes control of this field, so a user who
+  // never touches "Paid now" gets exactly today's behaviour.
+  useEffect(() => {
+    if (!paidNowTouched) setValue('paid_now', amount)
+  }, [amount, paidNowTouched, setValue])
+
+  const createExpenseWithPayment = useCreateExpenseWithPayment()
   const updateExpense = useUpdateExpense()
   const [saving, setSaving] = useState(false)
 
   const submit = async (data: ExpenseInput) => {
     setSaving(true)
     try {
-      const input: CreateExpenseInput = {
-        category_id: data.category_id,
-        description: data.description.trim(),
-        payee: blankToNull(data.payee),
-        amount: data.amount,
-        paid_by: data.paid_by,
-        source: data.source,
-        note: blankToNull(data.note),
+      let saved: Expense
+      if (isEdit) {
+        const input: CreateExpenseInput = {
+          category_id: data.category_id,
+          description: data.description.trim(),
+          payee: blankToNull(data.payee),
+          amount: data.amount,
+          paid_by: data.paid_by,
+          source: data.source,
+          note: blankToNull(data.note),
+        }
+        saved = await updateExpense.mutateAsync({ id: expense.id, ...input })
+      } else {
+        const input: CreateExpenseWithPaymentInput = {
+          category_id: data.category_id,
+          description: data.description.trim(),
+          payee: blankToNull(data.payee),
+          amount: data.amount,
+          paid_now: data.paid_now,
+          paid_by: data.paid_by,
+          source: data.source,
+          note: blankToNull(data.note),
+        }
+        saved = await createExpenseWithPayment.mutateAsync(input)
       }
-      const saved = isEdit
-        ? await updateExpense.mutateAsync({ id: expense.id, ...input })
-        : await createExpense.mutateAsync(input)
       onSaved(saved)
     } finally {
       setSaving(false)
     }
   }
 
-  const activeMutation = isEdit ? updateExpense : createExpense
+  const activeMutation = isEdit ? updateExpense : createExpenseWithPayment
 
   return (
     <form onSubmit={(e) => e.preventDefault()} className="w-full max-w-sm">
@@ -161,6 +193,35 @@ export function ExpenseForm({
           />
           {errors.amount && <span className="text-neg text-xs">{errors.amount.message}</span>}
         </label>
+
+        {!isEdit && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-ink-soft tracking-wide">Paid now</span>
+            <Controller
+              control={control}
+              name="paid_now"
+              render={({ field }) => (
+                <AmountInput
+                  value={field.value}
+                  onChange={(v) => {
+                    setPaidNowTouched(true)
+                    field.onChange(v)
+                  }}
+                />
+              )}
+            />
+            {errors.paid_now && <span className="text-neg text-xs">{errors.paid_now.message}</span>}
+            {paidNow < amount ? (
+              <span className="text-xs text-ink-soft">
+                Balance {formatINR(amount - paidNow)} due later
+              </span>
+            ) : (
+              <span className="text-xs text-ink-soft">
+                Leave as the full amount unless you are paying an advance.
+              </span>
+            )}
+          </label>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-xs text-ink-soft tracking-wide">Paid from</span>

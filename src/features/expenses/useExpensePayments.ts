@@ -40,7 +40,7 @@ export interface CreatePaymentInput {
 
 /** One payment moves the fund balance, member custody and the activity feed,
  *  so every dependent key is invalidated together. */
-function invalidateMoney(queryClient: QueryClient) {
+export function invalidateMoney(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: paymentKeys.all })
   queryClient.invalidateQueries({ queryKey: paymentKeys.status })
   queryClient.invalidateQueries({ queryKey: expenseKeys.all })

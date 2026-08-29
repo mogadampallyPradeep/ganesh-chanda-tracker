@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { Expense, SpendSource } from '../../types/db'
+import { invalidateMoney } from './useExpensePayments'
 
 export { expenseKeys } from './keys'
 import { expenseKeys } from './keys'
@@ -57,6 +58,50 @@ export function useCreateExpense() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.all })
     },
+  })
+}
+
+export interface CreateExpenseWithPaymentInput {
+  category_id: string
+  description: string
+  payee: string | null
+  amount: number
+  paid_now: number
+  paid_by: string
+  source: SpendSource
+  note: string | null
+}
+
+export function useCreateExpenseWithPayment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: CreateExpenseWithPaymentInput) => {
+      const { paid_now, paid_by, source, ...expenseFields } = input
+
+      const { data: expense, error } = await supabase
+        .from('expenses')
+        .insert({ ...expenseFields, paid_by, source })
+        .select()
+        .single()
+      if (error) throw new Error(error.message)
+
+      if (paid_now > 0) {
+        const { error: payErr } = await supabase.from('expense_payments').insert({
+          expense_id: (expense as Expense).id,
+          amount: paid_now,
+          source,
+          paid_by,
+        })
+        if (payErr) {
+          await supabase.from('expenses').delete().eq('id', (expense as Expense).id)
+          throw new Error(payErr.message)
+        }
+      }
+
+      return expense as Expense
+    },
+    onSuccess: () => invalidateMoney(queryClient),
   })
 }
 
