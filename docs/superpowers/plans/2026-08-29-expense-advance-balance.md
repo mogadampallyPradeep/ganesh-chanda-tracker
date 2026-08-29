@@ -886,7 +886,25 @@ git commit -m "feat(expenses): payments list and add-payment on expense detail"
 
 **Interfaces:**
 - Consumes: `useExpenseStatus()` (Task 2), `Balance.outstanding` and `Balance.freeAfterDues` (Task 3).
-- Produces: no new exports.
+- Produces: `Balance.unreimbursedPersonal`; a corrected `freeAfterDues`.
+
+**This task also corrects `freeAfterDues` in `src/domain/balance.ts`.** As built
+in Task 3 it is `available − outstanding`, which overstates what is spendable: it
+ignores money the fund owes members for out-of-pocket spends. Owner's decision
+(2026-08-29) is to subtract that too. `computeBalance` therefore also takes
+reimbursements into a new figure:
+
+```ts
+const unreimbursedPersonal =
+  sum(payments.filter((p) => p.source === 'personal'), (p) => p.amount) -
+  sum(reimbursements, (r) => r.amount)
+
+freeAfterDues: available - outstanding - unreimbursedPersonal
+```
+
+Add `unreimbursedPersonal` to the `Balance` interface. It may go negative if
+members are over-reimbursed; do not clamp it, for the same reason
+`freeAfterDues` is not clamped.
 
 - [ ] **Step 1: Balance chip in the list**
 

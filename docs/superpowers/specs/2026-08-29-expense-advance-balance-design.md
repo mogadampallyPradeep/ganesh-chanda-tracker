@@ -83,7 +83,14 @@ risk.
 | `paidOut` | Σ `expense_payments.amount` | **all cash/bank deductions** |
 | `outstanding` | `committed − paidOut` | the "Yet to pay" figure |
 | `available` | `cashInHand + inBank` | unchanged — real money on hand |
-| `freeAfterDues` | `available − outstanding` | **new** — genuinely uncommitted money |
+| `unreimbursedPersonal` | Σ personal payments − Σ reimbursements | what the fund owes its members |
+| `freeAfterDues` | `available − outstanding − unreimbursedPersonal` | **new** — genuinely uncommitted money |
+
+`freeAfterDues` subtracts money owed back to members as well as unpaid
+commitments (owner's decision, 2026-08-29). If Ramesh buys the idol for ₹40,000
+out of his own pocket, that ₹40,000 is his the moment he asks for it, so it is
+not free to spend — even though it never left the fund's cash and correctly does
+not appear in `outstanding`.
 
 `freeAfterDues` goes **negative** when you have committed to more than you
 currently hold. That is a legitimate and important state, not an error: it is
