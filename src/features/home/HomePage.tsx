@@ -119,7 +119,7 @@ export function HomePage() {
           tone={balance.outstanding > 0 ? 'neg' : 'default'}
         />
       </div>
-      {balance.outstanding > 0 && (
+      {(balance.outstanding > 0 || balance.unreimbursedPersonal > 0) && (
         <p className={balance.freeAfterDues < 0 ? 'text-neg text-sm' : 'text-ink-soft text-sm'}>
           {balance.freeAfterDues < 0
             ? `Committed ${formatINR(-balance.freeAfterDues)} more than the fund holds`

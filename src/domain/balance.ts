@@ -6,7 +6,7 @@ export interface Balance {
   paidOut: number // money that has actually left the fund
   outstanding: number // committed − paidOut, i.e. yet to pay
   available: number // cash in hand + in bank (real money)
-  unreimbursedPersonal: number // owed back to members for out-of-pocket spends
+  unreimbursedPersonal: number // owed back to members for out-of-pocket spends; floored at 0 — the fund cannot owe a negative amount, and an over-reimbursement is a real cash loss already reflected in cashInHand, not a reserve to cancel
   freeAfterDues: number // available − outstanding − unreimbursedPersonal; negative is a real warning
   cashInHand: number
   inBank: number
@@ -42,9 +42,11 @@ export function computeBalance(
   const available = cashInHand + inBank
   const outstanding = committed - paidOut
 
-  const unreimbursedPersonal =
+  const unreimbursedPersonal = Math.max(
+    0,
     sum(payments.filter((p) => p.source === 'personal'), (p) => p.amount) -
-    sum(reimbursements, (r) => r.amount)
+      sum(reimbursements, (r) => r.amount),
+  )
 
   return {
     collected,
