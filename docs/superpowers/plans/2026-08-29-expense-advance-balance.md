@@ -749,6 +749,22 @@ git commit -m "feat(expenses): record an advance when logging a spend"
 **Files:**
 - Create: `src/features/expenses/ExpensePayments.tsx`
 - Modify: `src/features/expenses/ExpenseEditPage.tsx`
+- Modify: `src/features/expenses/ExpenseForm.tsx` (edit mode only)
+- Modify: `src/features/expenses/useExpenses.ts` (`useUpdateExpense`)
+
+**Critical: this task also closes the edit-path hole.** Today the edit form
+still exposes Amount, Paid from and Paid by, and `useUpdateExpense` writes only
+to `expenses` — the payment row is never touched. Editing a ₹5,000 cash spend to
+"bank" leaves its payment as cash: cash in hand reads ₹5,000 short and the bank
+₹5,000 high, permanently and silently. Editing the amount from ₹5,000 to ₹6,000
+raises the commitment while `paidOut` stays ₹5,000, inventing a ₹1,000 balance
+on a spend that was settled.
+
+The fix is to stop editing money on the commitment: **remove Amount, Paid from
+and Paid by from the form in edit mode.** Category, description, payee and note
+stay editable. Money is edited in the payments list this task builds — that is
+where it lives now. Creating a new expense is unaffected: the form keeps all its
+fields in create mode (Task 7's flow).
 
 **Interfaces:**
 - Consumes: `useExpensePayments()`, `useAddPayment()`, `useDeletePayment()` (Task 2), `formatINR`/`formatDate` from `src/lib/format.ts`.
@@ -935,8 +951,17 @@ git commit -m "feat(ui): show outstanding balance in list and on home"
 -- supabase/migrations/0009_public_views_payments.sql
 -- Public statement reflects committed vs paid. Donor phone and address remain
 -- excluded, exactly as before.
+--
+-- The views are DROPPED and recreated, not replaced. CREATE OR REPLACE VIEW can
+-- only append columns — it cannot rename or retype an existing one. Both of
+-- these do exactly that (public_expenses: source -> paid at column 4;
+-- public_summary: spent -> committed at column 2), so a plain CREATE OR REPLACE
+-- fails with: cannot change name of view column "source" to "paid".
 
-create or replace view public_expenses as
+drop view if exists public_expenses;
+drop view if exists public_summary;
+
+create view public_expenses as
   select
     c.name as category_name,
     e.description,
@@ -948,7 +973,7 @@ create or replace view public_expenses as
   join categories c on c.id = e.category_id
   join expense_status s on s.expense_id = e.id;
 
-create or replace view public_summary as
+create view public_summary as
   select collected, committed, spent, outstanding, cash_in_hand, in_bank,
          (cash_in_hand + in_bank) as available
   from (
@@ -1042,10 +1067,20 @@ Expected: no hits referring to an `Expense`. Fix any that remain before continui
 -- supabase/migrations/0010_drop_expense_source.sql
 -- Phase 2. These columns were superseded by expense_payments in 0008 and their
 -- values were copied there by that migration's backfill. Nothing reads them.
+--
+-- NEVER add CASCADE to these statements. If 0009 has not been run, the drop
+-- FAILS because 0005's public_expenses still selects expenses.source. That
+-- failure is the safe outcome. Adding CASCADE to "fix" it silently drops
+-- public_expenses AND public_summary, and the shared public statement link goes
+-- dead for everyone holding it. If this errors, run 0009 first — do not cascade.
 
 alter table expenses drop column source;
 alter table expenses drop column paid_by;
 ```
+
+**If either statement errors, stop and read the error.** The expected cause is a
+view still depending on the column, which means 0009 was skipped. Fix that by
+running 0009, never by cascading.
 
 - [ ] **Step 3: Back up first, then ask the human to run it**
 
