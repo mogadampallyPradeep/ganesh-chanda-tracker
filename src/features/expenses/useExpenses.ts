@@ -2,10 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { Expense, SpendSource } from '../../types/db'
 
-export const expenseKeys = {
-  all: ['expenses'] as const,
-  detail: (id: string) => ['expenses', id] as const,
-}
+export { expenseKeys } from './keys'
+import { expenseKeys } from './keys'
 
 export function useExpenses() {
   return useQuery({
