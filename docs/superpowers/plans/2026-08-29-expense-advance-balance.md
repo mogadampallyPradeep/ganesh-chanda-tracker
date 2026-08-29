@@ -43,7 +43,7 @@ This migration is **additive only**. It does not drop `expenses.source` or `expe
 -- "total agreed". Actual movements of money live in expense_payments.
 --
 -- expenses.source / expenses.paid_by are intentionally LEFT IN PLACE here and
--- dropped in 0010, after the app has stopped reading them. That keeps the
+-- dropped in 0011, after the app has stopped reading them. That keeps the
 -- deployed frontend consistent with the database at every point in the rollout.
 
 create table expense_payments (
@@ -952,7 +952,7 @@ git commit -m "feat(ui): show outstanding balance in list and on home"
 ### Task 10: Public statement and Excel export
 
 **Files:**
-- Create: `supabase/migrations/0009_public_views_payments.sql`
+- Create: `supabase/migrations/0010_public_views_payments.sql`
 - Modify: `src/domain/statement.ts`
 - Modify: `src/features/export/exportExcel.ts`
 - Modify: `src/features/export/useExportStatement.ts`
@@ -966,7 +966,7 @@ git commit -m "feat(ui): show outstanding balance in list and on home"
 - [ ] **Step 1: Update the public views**
 
 ```sql
--- supabase/migrations/0009_public_views_payments.sql
+-- supabase/migrations/0010_public_views_payments.sql
 -- Public statement reflects committed vs paid. Donor phone and address remain
 -- excluded, exactly as before.
 --
@@ -1051,7 +1051,7 @@ Open the public statement link and download the Excel export; confirm the part-p
 - [ ] **Step 7: Commit**
 
 ```bash
-git add supabase/migrations/0009_public_views_payments.sql src/domain/statement.ts src/features/export/ src/features/public/
+git add supabase/migrations/0010_public_views_payments.sql src/domain/statement.ts src/features/export/ src/features/public/
 git commit -m "feat(statement): public view and export show committed vs paid"
 ```
 
@@ -1060,7 +1060,7 @@ git commit -m "feat(statement): public view and export show committed vs paid"
 ### Task 11: Drop the superseded expense columns
 
 **Files:**
-- Create: `supabase/migrations/0010_drop_expense_source.sql`
+- Create: `supabase/migrations/0011_drop_expense_source.sql`
 - Modify: `src/types/db.ts`
 - Modify: `src/features/expenses/useExpenses.ts`
 
@@ -1082,7 +1082,7 @@ Expected: no hits referring to an `Expense`. Fix any that remain before continui
 - [ ] **Step 2: Write the migration**
 
 ```sql
--- supabase/migrations/0010_drop_expense_source.sql
+-- supabase/migrations/0011_drop_expense_source.sql
 -- Phase 2. These columns were superseded by expense_payments in 0008 and their
 -- values were copied there by that migration's backfill. Nothing reads them.
 --
@@ -1090,15 +1090,15 @@ Expected: no hits referring to an `Expense`. Fix any that remain before continui
 -- FAILS because 0005's public_expenses still selects expenses.source. That
 -- failure is the safe outcome. Adding CASCADE to "fix" it silently drops
 -- public_expenses AND public_summary, and the shared public statement link goes
--- dead for everyone holding it. If this errors, run 0009 first — do not cascade.
+-- dead for everyone holding it. If this errors, run 0010 first — do not cascade.
 
 alter table expenses drop column source;
 alter table expenses drop column paid_by;
 ```
 
 **If either statement errors, stop and read the error.** The expected cause is a
-view still depending on the column, which means 0009 was skipped. Fix that by
-running 0009, never by cascading.
+view still depending on the column, which means 0010 was skipped. Fix that by
+running 0010, never by cascading.
 
 - [ ] **Step 3: Back up first, then ask the human to run it**
 
@@ -1128,7 +1128,7 @@ Log a fresh spend end to end; confirm it appears in the list, the activity feed,
 - [ ] **Step 7: Commit**
 
 ```bash
-git add supabase/migrations/0010_drop_expense_source.sql src/types/db.ts src/features/expenses/useExpenses.ts
+git add supabase/migrations/0011_drop_expense_source.sql src/types/db.ts src/features/expenses/useExpenses.ts
 git commit -m "refactor(expenses): drop source and paid_by, superseded by payments"
 ```
 
@@ -1137,7 +1137,8 @@ git commit -m "refactor(expenses): drop source and paid_by, superseded by paymen
 ## Rollout order
 
 1. Tasks 1–9 built and merged, migration `0008` run **before** the frontend deploys.
-2. Task 10 — run `0009` before deploying, same rule.
-3. Task 11 last, once the app has been exercised in production for at least a session.
+2. Task 7 — run `0009` (the payment lock) before deploying.
+3. Task 10 — run `0010` before deploying, same rule.
+4. Task 11 last (`0011`), once the app has been exercised in production for at least a session.
 
 At every point between these steps the deployed app and the database agree, so a rollback is a `git revert` and a redeploy with no schema surgery.
