@@ -2,15 +2,18 @@ import { useState } from 'react'
 import {
   canDeleteCategory,
   useCategories,
+  useCategoryUsage,
   useCreateCategory,
   useDeleteCategory,
   useRenameCategory,
   useReorderCategory,
 } from './useCategories'
+import { DeleteCategoryDialog } from './DeleteCategoryDialog'
 import type { Category } from '../../types/db'
 
 export function CategoriesPage() {
   const { data: categories, isLoading, isError, error } = useCategories()
+  const { data: usage } = useCategoryUsage()
   const createCategory = useCreateCategory()
   const renameCategory = useRenameCategory()
   const deleteCategory = useDeleteCategory()
@@ -48,9 +51,21 @@ export function CategoriesPage() {
     cancelEdit()
   }
 
-  const handleDelete = async (category: Category) => {
-    await deleteCategory.mutateAsync(category)
+  const pendingDelete = ordered.find((c) => c.id === confirmDeleteId) ?? null
+  const usageFor = (id: string) => usage?.find((u) => u.category_id === id)
+
+  const closeDeleteDialog = () => {
     setConfirmDeleteId(null)
+    deleteCategory.reset()
+  }
+
+  const handleDelete = async (category: Category, moveToId?: string) => {
+    try {
+      await deleteCategory.mutateAsync({ category, moveToId })
+      closeDeleteDialog()
+    } catch {
+      // Message is rendered inside the dialog; keep it open so the choice survives.
+    }
   }
 
   const move = (category: Category, direction: 'up' | 'down') => {
@@ -95,7 +110,6 @@ export function CategoriesPage() {
         <ul className="flex flex-col gap-2">
           {ordered.map((category, index) => {
             const isEditing = editingId === category.id
-            const isConfirmingDelete = confirmDeleteId === category.id
             const canDelete = canDeleteCategory(category)
 
             return (
@@ -168,41 +182,38 @@ export function CategoriesPage() {
                 </div>
 
                 {canDelete && !isEditing && (
-                  <>
-                    {isConfirmingDelete ? (
-                      <div className="flex gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          disabled={deleteCategory.isPending}
-                          onClick={() => void handleDelete(category)}
-                          className="rounded-xl px-3 py-2 text-sm font-semibold text-white bg-neg disabled:opacity-50"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="rounded-xl px-3 py-2 text-sm text-ink-soft border border-line"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        aria-label={`Remove ${category.name}`}
-                        onClick={() => setConfirmDeleteId(category.id)}
-                        className="shrink-0 rounded-xl px-3 py-2 text-sm text-neg border border-line"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${category.name}`}
+                    onClick={() => setConfirmDeleteId(category.id)}
+                    className="shrink-0 rounded-xl px-3 py-2 text-sm text-neg border border-line"
+                  >
+                    Remove
+                  </button>
                 )}
               </li>
             )
           })}
         </ul>
+      )}
+
+      {pendingDelete && (
+        <DeleteCategoryDialog
+          category={pendingDelete}
+          destinations={ordered.filter((c) => c.id !== pendingDelete.id)}
+          expenseCount={usageFor(pendingDelete.id)?.expense_count ?? 0}
+          totalAmount={usageFor(pendingDelete.id)?.total_amount ?? 0}
+          isPending={deleteCategory.isPending}
+          error={
+            deleteCategory.isError
+              ? deleteCategory.error instanceof Error
+                ? deleteCategory.error.message
+                : 'Could not remove category'
+              : null
+          }
+          onCancel={closeDeleteDialog}
+          onConfirm={(moveToId) => void handleDelete(pendingDelete, moveToId)}
+        />
       )}
     </div>
   )
