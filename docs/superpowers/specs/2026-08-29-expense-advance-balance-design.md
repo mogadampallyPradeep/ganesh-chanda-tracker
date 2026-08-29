@@ -39,20 +39,30 @@ expenses           id, category_id, description, payee, amount, note, created_at
 expense_payments   id, expense_id → expenses(id) on delete cascade
                    amount int > 0
                    source spend_source (cash | bank | personal)
-                   paid_by → committee_members(mobile)
+                   paid_by → committee_members(mobile), nullable
                    note, created_at
 ```
 
 An expense paid in full at entry has exactly one payment row. Nothing about the
 common case gets harder.
 
+`paid_by` is nullable, matching today's `expenses.paid_by`, so the backfill
+cannot fail on a historical row that never recorded a payer.
+
 **`expense_status` view** — `expense_id, total, paid, balance, is_settled` — so
 no caller recomputes the arithmetic.
 
-**Overpayment trigger** — a `before insert or update` trigger on
-`expense_payments` raising when `sum(payments) > expenses.amount`. This is a
-cross-row invariant, so a `CHECK` constraint cannot express it. Editing an
-expense's total downward below what is already paid is refused by the same rule.
+**Overpayment triggers** — this is a cross-row invariant, so a `CHECK`
+constraint cannot express it, and it has to be guarded from *both* sides:
+
+- `before insert or update on expense_payments` — refuses a payment that would
+  push `sum(payments)` above `expenses.amount`.
+- `before update of amount on expenses` — refuses lowering a total below what
+  has already been paid against it.
+
+A trigger on the payments table alone would leave the second hole wide open:
+you could book ₹50,000, pay ₹50,000, then edit the total down to ₹10,000 and
+end up ₹40,000 overpaid with no error.
 
 ### Migration safety
 
@@ -74,6 +84,11 @@ risk.
 | `outstanding` | `committed − paidOut` | the "Yet to pay" figure |
 | `available` | `cashInHand + inBank` | unchanged — real money on hand |
 | `freeAfterDues` | `available − outstanding` | **new** — genuinely uncommitted money |
+
+`freeAfterDues` goes **negative** when you have committed to more than you
+currently hold. That is a legitimate and important state, not an error: it is
+the early warning that the mandal owes more than it has. Home renders it in the
+negative colour with a plain-language line rather than hiding or clamping it.
 
 Revised derivations:
 
