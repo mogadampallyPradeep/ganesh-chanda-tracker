@@ -91,14 +91,17 @@ export function useCreateExpenseWithPayment() {
   })
 }
 
-// Amount, source and paid_by are deliberately absent: those belong to the
-// payment row, not the commitment, and editing them here would silently
-// desync the fund ledger. See ExpensePayments for how money is corrected.
+// source and paid_by are deliberately absent: those describe money that moved
+// and belong to the payment row, so editing them here would silently desync the
+// fund ledger. See ExpensePayments for how money is corrected. `amount` is the
+// commitment itself, not a movement, so a typo'd total is correctable here —
+// trg_expense_total_not_below_paid refuses to drop it below what is paid.
 export type UpdateExpenseInput = {
   id: string
   category_id?: string
   description?: string
   payee?: string | null
+  amount?: number
   note?: string | null
 }
 
@@ -117,7 +120,7 @@ export function useUpdateExpense() {
       return data as Expense
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all })
+      invalidateMoney(queryClient)
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(data.id) })
     },
   })
@@ -132,8 +135,10 @@ export function useDeleteExpense() {
       if (error) throw new Error(error.message)
       return id
     },
+    // The delete cascades to expense_payments, so the payment and status keys
+    // are stale too — leaving them cached shows spend with nothing committed.
     onSuccess: (id) => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all })
+      invalidateMoney(queryClient)
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(id) })
     },
   })

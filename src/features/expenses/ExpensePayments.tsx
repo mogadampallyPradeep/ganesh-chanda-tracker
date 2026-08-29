@@ -40,7 +40,7 @@ function nameOf(members: CommitteeMember[] | undefined, mobile: string | null) {
 export function ExpensePayments({ expenseId, total }: { expenseId: string; total: number }) {
   const { data: allPayments } = useExpensePayments()
   const { data: members } = useCommitteeMembers()
-  const { member } = useAuth()
+  const { member, isAdmin } = useAuth()
   const addPayment = useAddPayment()
   const deletePayment = useDeletePayment()
 
@@ -84,14 +84,24 @@ export function ExpensePayments({ expenseId, total }: { expenseId: string; total
               </span>
               <span className="flex items-center gap-2 shrink-0">
                 <span className="text-ink">{formatINR(p.amount)}</span>
-                <button
-                  type="button"
-                  disabled={deletePayment.isPending}
-                  onClick={() => deletePayment.mutate(p.id)}
-                  className="text-xs text-neg disabled:opacity-50"
-                >
-                  Remove
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    disabled={deletePayment.isPending}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Remove this payment of ${formatINR(p.amount)}? This cannot be undone.`,
+                        )
+                      ) {
+                        deletePayment.mutate(p.id)
+                      }
+                    }}
+                    className="text-xs text-neg disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                )}
               </span>
             </li>
           ))}

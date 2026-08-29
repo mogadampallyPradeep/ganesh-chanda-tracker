@@ -5,7 +5,7 @@
 -- "total agreed". Actual movements of money live in expense_payments.
 --
 -- expenses.source / expenses.paid_by are intentionally LEFT IN PLACE here and
--- dropped in 0010, after the app has stopped reading them. That keeps the
+-- dropped in 0011a/0011b, after the app has stopped reading them. That keeps the
 -- deployed frontend consistent with the database at every point in the rollout.
 
 create table expense_payments (

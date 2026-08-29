@@ -6,7 +6,7 @@ export interface Balance {
   paidOut: number // money that has actually left the fund
   outstanding: number // committed − paidOut, i.e. yet to pay
   available: number // cash in hand + in bank (real money)
-  unreimbursedPersonal: number // owed back to members for out-of-pocket spends; floored at 0 — the fund cannot owe a negative amount, and an over-reimbursement is a real cash loss already reflected in cashInHand, not a reserve to cancel
+  unreimbursedPersonal: number // owed back to members for out-of-pocket spends; netted and floored PER MEMBER, so over-settling one member cannot cancel a debt owed to another. An over-reimbursement is a real cash loss already reflected in cashInHand, not a reserve to offset.
   freeAfterDues: number // available − outstanding − unreimbursedPersonal; negative is a real warning
   cashInHand: number
   inBank: number
@@ -22,8 +22,8 @@ const sum = <T,>(rows: T[], pick: (r: T) => number) => rows.reduce((t, r) => t +
 export function computeBalance(
   donations: Pick<Donation, 'amount' | 'method'>[],
   expenses: Pick<Expense, 'amount'>[],
-  payments: Pick<ExpensePayment, 'amount' | 'source'>[],
-  reimbursements: Pick<Reimbursement, 'amount' | 'source'>[] = [],
+  payments: Pick<ExpensePayment, 'amount' | 'source' | 'paid_by'>[],
+  reimbursements: Pick<Reimbursement, 'amount' | 'source' | 'member_id'>[] = [],
 ): Balance {
   const collected = sum(donations, (d) => d.amount)
   const committed = sum(expenses, (e) => e.amount)
@@ -42,11 +42,16 @@ export function computeBalance(
   const available = cashInHand + inBank
   const outstanding = committed - paidOut
 
-  const unreimbursedPersonal = Math.max(
-    0,
-    sum(payments.filter((p) => p.source === 'personal'), (p) => p.amount) -
-      sum(reimbursements, (r) => r.amount),
-  )
+  const owedByMember = new Map<string, number>()
+  for (const p of payments) {
+    if (p.source === 'personal' && p.paid_by) {
+      owedByMember.set(p.paid_by, (owedByMember.get(p.paid_by) ?? 0) + p.amount)
+    }
+  }
+  for (const r of reimbursements) {
+    owedByMember.set(r.member_id, (owedByMember.get(r.member_id) ?? 0) - r.amount)
+  }
+  const unreimbursedPersonal = [...owedByMember.values()].reduce((t, v) => t + Math.max(0, v), 0)
 
   return {
     collected,

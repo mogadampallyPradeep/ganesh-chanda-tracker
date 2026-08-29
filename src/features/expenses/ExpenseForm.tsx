@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { expenseSchema, type ExpenseInput } from './expenseSchema'
+import { expenseEditSchema, expenseSchema, type ExpenseInput } from './expenseSchema'
 import {
   useCreateExpenseWithPayment,
   useUpdateExpense,
@@ -75,7 +75,7 @@ export function ExpenseForm({
     setValue,
     formState: { errors },
   } = useForm<ExpenseInput>({
-    resolver: zodResolver(expenseSchema),
+    resolver: zodResolver(isEdit ? expenseEditSchema : expenseSchema),
     defaultValues: expense
       ? {
           category_id: expense.category_id,
@@ -84,7 +84,7 @@ export function ExpenseForm({
           amount: expense.amount,
           paid_now: expense.amount,
           paid_by: expense.paid_by ?? '',
-          source: expense.source,
+          source: expense.source ?? 'cash',
           note: expense.note ?? '',
         }
       : {
@@ -123,6 +123,7 @@ export function ExpenseForm({
           category_id: data.category_id,
           description: data.description.trim(),
           payee: blankToNull(data.payee),
+          amount: data.amount,
           note: blankToNull(data.note),
         })
       } else {
@@ -180,17 +181,20 @@ export function ExpenseForm({
           />
         </label>
 
-        {!isEdit && (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-ink-soft tracking-wide">Amount</span>
-            <Controller
-              control={control}
-              name="amount"
-              render={({ field }) => <AmountInput value={field.value} onChange={field.onChange} />}
-            />
-            {errors.amount && <span className="text-neg text-xs">{errors.amount.message}</span>}
-          </label>
-        )}
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs text-ink-soft tracking-wide">Amount</span>
+          <Controller
+            control={control}
+            name="amount"
+            render={({ field }) => <AmountInput value={field.value} onChange={field.onChange} />}
+          />
+          {errors.amount && <span className="text-neg text-xs">{errors.amount.message}</span>}
+          {isEdit && (
+            <span className="text-xs text-ink-soft">
+              The total agreed. It cannot be set below what has already been paid.
+            </span>
+          )}
+        </label>
 
         {!isEdit && (
           <label className="flex flex-col gap-1.5">

@@ -238,10 +238,16 @@ function MemberCard({
             </>
           )}
         </div>
-        {holding.owedBack > 0 && (
+        {holding.owedBack !== 0 && (
           <div className="text-right">
-            <p className="text-[10px] text-ink-soft tracking-wide uppercase">Owed back</p>
-            <p className="font-display text-lg font-bold text-pos">{formatINR(holding.owedBack)}</p>
+            <p className="text-[10px] text-ink-soft tracking-wide uppercase">
+              {holding.owedBack > 0 ? 'Owed back' : 'Over-settled'}
+            </p>
+            <p
+              className={`font-display text-lg font-bold ${holding.owedBack > 0 ? 'text-pos' : 'text-neg'}`}
+            >
+              {formatINR(Math.abs(holding.owedBack))}
+            </p>
           </div>
         )}
       </div>
