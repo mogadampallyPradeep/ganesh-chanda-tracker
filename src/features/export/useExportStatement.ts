@@ -1,7 +1,7 @@
 import { useCategories } from '../categories/useCategories'
 import { useDonations } from '../donations/useDonations'
 import { useExpenses } from '../expenses/useExpenses'
-import { useExpensePayments } from '../expenses/useExpensePayments'
+import { useExpensePayments, useExpenseStatus } from '../expenses/useExpensePayments'
 import { useCommitteeReimbursements } from '../committee/useCommittee'
 import { useFundSettings } from '../settings/useFundSettings'
 import { computeBalance } from '../../domain/balance'
@@ -16,6 +16,7 @@ export function useExportStatement() {
   const donationsQuery = useDonations()
   const expensesQuery = useExpenses()
   const paymentsQuery = useExpensePayments()
+  const statusQuery = useExpenseStatus()
   const reimbursementsQuery = useCommitteeReimbursements()
   const fundSettingsQuery = useFundSettings()
 
@@ -24,6 +25,7 @@ export function useExportStatement() {
     donationsQuery.isSuccess &&
     expensesQuery.isSuccess &&
     paymentsQuery.isSuccess &&
+    statusQuery.isSuccess &&
     reimbursementsQuery.isSuccess
 
   const exportNow = () => {
@@ -32,8 +34,10 @@ export function useExportStatement() {
     const donations = donationsQuery.data ?? []
     const expenses = expensesQuery.data ?? []
     const payments = paymentsQuery.data ?? []
+    const status = statusQuery.data ?? []
     const reimbursements = reimbursementsQuery.data ?? []
     const categoryName = new Map(categories.map((c) => [c.id, c.name]))
+    const statusByExpense = new Map(status.map((s) => [s.expense_id, s]))
 
     const donationRows: PublicDonationRow[] = donations.map((d) => ({
       receipt_no: d.receipt_no,
@@ -46,13 +50,16 @@ export function useExportStatement() {
       category_name: categoryName.get(e.category_id) ?? 'Uncategorised',
       description: e.description,
       amount: e.amount,
-      source: e.source,
+      paid: statusByExpense.get(e.id)?.paid ?? 0,
+      balance: statusByExpense.get(e.id)?.balance ?? e.amount,
     }))
 
     const balance = computeBalance(donations, expenses, payments, reimbursements)
     const summary: StatementSummary = {
       collected: balance.collected,
+      committed: balance.committed,
       spent: balance.paidOut,
+      outstanding: balance.outstanding,
       available: balance.available,
       cashInHand: balance.cashInHand,
       inBank: balance.inBank,

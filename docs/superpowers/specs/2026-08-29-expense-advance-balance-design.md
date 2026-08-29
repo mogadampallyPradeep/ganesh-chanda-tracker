@@ -83,8 +83,20 @@ risk.
 | `paidOut` | Σ `expense_payments.amount` | **all cash/bank deductions** |
 | `outstanding` | `committed − paidOut` | the "Yet to pay" figure |
 | `available` | `cashInHand + inBank` | unchanged — real money on hand |
-| `unreimbursedPersonal` | Σ personal payments − Σ reimbursements | what the fund owes its members |
+| `unreimbursedPersonal` | `max(0, Σ personal payments − Σ reimbursements)` | what the fund owes its members |
 | `freeAfterDues` | `available − outstanding − unreimbursedPersonal` | **new** — genuinely uncommitted money |
+
+`unreimbursedPersonal` is **floored at zero**. A reimbursement is a freestanding
+row with no link to any personal payment, and the settle form's amount is freely
+editable, so the raw subtraction can go negative — and a negative reserve would
+cancel out a real cash loss. Concretely: nobody has spent personally, an admin
+settles ₹10,000 to a member anyway, cash correctly drops to ₹90,000, and an
+unfloored reserve of −₹10,000 would push `freeAfterDues` back to ₹1,00,000,
+hiding the leak entirely. In aggregate the fund cannot owe its members a
+negative amount.
+
+The floor applies only to this reserve. `freeAfterDues` itself stays unclamped
+and must still render negative.
 
 `freeAfterDues` subtracts money owed back to members as well as unpaid
 commitments (owner's decision, 2026-08-29). If Ramesh buys the idol for ₹40,000
