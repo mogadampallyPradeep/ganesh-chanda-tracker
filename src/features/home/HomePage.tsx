@@ -58,8 +58,8 @@ export function HomePage() {
     [donations, expenses, payments, reimbursements],
   )
   const budget = useMemo(
-    () => computeBudget(categories, estimates, expenses),
-    [categories, estimates, expenses],
+    () => computeBudget(categories, estimates, expenses, payments),
+    [categories, estimates, expenses, payments],
   )
   const shortfall = useMemo(
     () => computeShortfall(budget.totalEstimated, balance.collected, balance.committed),

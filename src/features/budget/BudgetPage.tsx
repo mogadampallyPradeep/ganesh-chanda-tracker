@@ -43,7 +43,10 @@ export function BudgetPage() {
   const donations = donationsQuery.data ?? []
   const reimbursements = reimbursementsQuery.data ?? []
 
-  const budget = useMemo(() => computeBudget(categories, estimates, expenses), [categories, estimates, expenses])
+  const budget = useMemo(
+    () => computeBudget(categories, estimates, expenses, payments),
+    [categories, estimates, expenses, payments],
+  )
 
   const balance = useMemo(
     () => computeBalance(donations, expenses, payments, reimbursements),
@@ -148,10 +151,15 @@ function BudgetRowCard({ row }: { row: BudgetRow }) {
     <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold text-ink truncate">{row.name}</p>
-        <p className="text-sm text-ink-soft whitespace-nowrap">
-          <span className={`font-semibold ${row.over ? 'text-neg' : 'text-ink'}`}>{formatINR(row.actual)}</span> /{' '}
-          {formatINR(row.estimated)}
-        </p>
+        <div className="text-right">
+          <p className="text-sm text-ink-soft whitespace-nowrap">
+            <span className={`font-semibold ${row.over ? 'text-neg' : 'text-ink'}`}>{formatINR(row.actual)}</span> /{' '}
+            {formatINR(row.estimated)}
+          </p>
+          {row.paid !== row.actual && (
+            <span className="text-xs text-ink-soft">{formatINR(row.paid)} paid</span>
+          )}
+        </div>
       </div>
 
       <div className="h-2 rounded-full bg-surface-2 overflow-hidden mt-2">
