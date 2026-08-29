@@ -1,4 +1,4 @@
-# Vendor contacts — captured idea (not designed, not built)
+# Vendor contacts — DECIDED, not yet built
 
 Feature #4 in the queue. Store a contact number against the person a spend is
 paid to — the band person, the lighting person, the tent house — so next year's
@@ -9,6 +9,12 @@ committee can reach them without asking around.
 `expenses.payee` is a nullable `text` column, written by the expense form and
 otherwise unused: nothing displays it prominently and nothing links it anywhere.
 So the name is already captured; only the number is missing.
+
+## Decision (owner, 2026-08-29): shape A — name and number only, for reference
+
+No vendors table, no contact book, no reuse across festivals. Just the person's
+name and their number stored against the spend so anyone can look it up later.
+Shape B below is recorded only to show what was considered and rejected.
 
 ## Two shapes, materially different in cost
 
@@ -27,12 +33,16 @@ Worth noting the category list already reads like a vendor list — Band (PAD),
 Lighting, Tent House / Mandap, Pandit / Pooja cost — which is an argument for B,
 since a vendor naturally belongs to a category.
 
-## Open question, blocks the choice
+## Scope, now that A is chosen
 
-Is the value in **reaching this year's vendor quickly** (A is enough), or in
-**building a reusable contact book across festivals** (needs B)? If the mandal
-mostly rehires the same people every year, B pays for itself; if vendors change
-yearly, A is the right size.
+- Migration: `alter table expenses add column payee_phone text;` — additive, safe
+  on live data, no backfill needed.
+- Expense form: a phone field beside the existing Payee name. Optional, never
+  required — plenty of spends have no vendor worth recording.
+- Expense detail and list: show the name, and make the number a `tel:` link so it
+  dials straight from the phone.
+- No validation beyond trimming. Indian numbers get written a dozen different
+  ways and refusing them helps nobody for a reference field.
 
 ## Non-negotiable
 
