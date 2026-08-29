@@ -41,10 +41,10 @@ export function CommitteePage() {
     return computeHoldings(
       membersQuery.data,
       donationsQuery.data ?? [],
-      expensesQuery.data ?? [],
+      paymentsQuery.data ?? [],
       reimbursementsQuery.data ?? [],
     )
-  }, [membersQuery.data, donationsQuery.data, expensesQuery.data, reimbursementsQuery.data])
+  }, [membersQuery.data, donationsQuery.data, paymentsQuery.data, reimbursementsQuery.data])
 
   // Single-treasurer model: the fund's cash/bank sits with whoever holds it,
   // shown once at the top. Per-member custody is not tracked — members only
