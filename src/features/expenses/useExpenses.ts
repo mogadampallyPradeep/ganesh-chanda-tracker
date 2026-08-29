@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { formatINR } from '../../lib/format'
 import type { Expense, SpendSource } from '../../types/db'
 import { invalidateMoney } from './useExpensePayments'
 
@@ -94,7 +95,17 @@ export function useCreateExpenseWithPayment() {
           paid_by,
         })
         if (payErr) {
-          await supabase.from('expenses').delete().eq('id', (expense as Expense).id)
+          const { error: deleteErr } = await supabase
+            .from('expenses')
+            .delete()
+            .eq('id', (expense as Expense).id)
+          if (deleteErr) {
+            throw new Error(
+              `"${expenseFields.description}" (${formatINR(expenseFields.amount)}) was recorded, ` +
+                `but its payment of ${formatINR(paid_now)} could not be saved and the entry could not be ` +
+                `removed automatically. Please open this expense and either add the payment or delete it.`,
+            )
+          }
           throw new Error(payErr.message)
         }
       }
