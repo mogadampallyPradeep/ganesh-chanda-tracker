@@ -5,7 +5,6 @@ import { expenseSchema, type ExpenseInput } from './expenseSchema'
 import {
   useCreateExpenseWithPayment,
   useUpdateExpense,
-  type CreateExpenseInput,
   type CreateExpenseWithPaymentInput,
 } from './useExpenses'
 import { useCategories } from '../categories/useCategories'
@@ -119,16 +118,13 @@ export function ExpenseForm({
     try {
       let saved: Expense
       if (isEdit) {
-        const input: CreateExpenseInput = {
+        saved = await updateExpense.mutateAsync({
+          id: expense.id,
           category_id: data.category_id,
           description: data.description.trim(),
           payee: blankToNull(data.payee),
-          amount: data.amount,
-          paid_by: data.paid_by,
-          source: data.source,
           note: blankToNull(data.note),
-        }
-        saved = await updateExpense.mutateAsync({ id: expense.id, ...input })
+        })
       } else {
         const input: CreateExpenseWithPaymentInput = {
           category_id: data.category_id,
@@ -184,15 +180,17 @@ export function ExpenseForm({
           />
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs text-ink-soft tracking-wide">Amount</span>
-          <Controller
-            control={control}
-            name="amount"
-            render={({ field }) => <AmountInput value={field.value} onChange={field.onChange} />}
-          />
-          {errors.amount && <span className="text-neg text-xs">{errors.amount.message}</span>}
-        </label>
+        {!isEdit && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-ink-soft tracking-wide">Amount</span>
+            <Controller
+              control={control}
+              name="amount"
+              render={({ field }) => <AmountInput value={field.value} onChange={field.onChange} />}
+            />
+            {errors.amount && <span className="text-neg text-xs">{errors.amount.message}</span>}
+          </label>
+        )}
 
         {!isEdit && (
           <label className="flex flex-col gap-1.5">
@@ -223,32 +221,36 @@ export function ExpenseForm({
           </label>
         )}
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs text-ink-soft tracking-wide">Paid from</span>
-          <Controller
-            control={control}
-            name="source"
-            render={({ field }) => <SourceToggle value={field.value} onChange={field.onChange} />}
-          />
-        </label>
+        {!isEdit && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-ink-soft tracking-wide">Paid from</span>
+            <Controller
+              control={control}
+              name="source"
+              render={({ field }) => <SourceToggle value={field.value} onChange={field.onChange} />}
+            />
+          </label>
+        )}
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs text-ink-soft tracking-wide">Paid by</span>
-          <select
-            {...register('paid_by')}
-            className="border border-line bg-bg rounded-xl px-3.5 py-3 text-ink text-base outline-none focus:border-primary"
-          >
-            <option value="" disabled>
-              Select member
-            </option>
-            {(members ?? []).map((m) => (
-              <option key={m.mobile} value={m.mobile}>
-                {m.name}
+        {!isEdit && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-ink-soft tracking-wide">Paid by</span>
+            <select
+              {...register('paid_by')}
+              className="border border-line bg-bg rounded-xl px-3.5 py-3 text-ink text-base outline-none focus:border-primary"
+            >
+              <option value="" disabled>
+                Select member
               </option>
-            ))}
-          </select>
-          {errors.paid_by && <span className="text-neg text-xs">{errors.paid_by.message}</span>}
-        </label>
+              {(members ?? []).map((m) => (
+                <option key={m.mobile} value={m.mobile}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            {errors.paid_by && <span className="text-neg text-xs">{errors.paid_by.message}</span>}
+          </label>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-xs text-ink-soft tracking-wide">Note</span>

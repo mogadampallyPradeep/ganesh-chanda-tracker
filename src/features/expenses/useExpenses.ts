@@ -37,31 +37,6 @@ export function useExpense(id: string) {
   })
 }
 
-export interface CreateExpenseInput {
-  category_id: string
-  description: string
-  payee: string | null
-  amount: number
-  paid_by: string
-  source: SpendSource
-  note: string | null
-}
-
-export function useCreateExpense() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (input: CreateExpenseInput) => {
-      const { data, error } = await supabase.from('expenses').insert(input).select().single()
-      if (error) throw new Error(error.message)
-      return data as Expense
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all })
-    },
-  })
-}
-
 export interface CreateExpenseWithPaymentInput {
   category_id: string
   description: string
@@ -116,7 +91,16 @@ export function useCreateExpenseWithPayment() {
   })
 }
 
-export type UpdateExpenseInput = Partial<CreateExpenseInput> & { id: string }
+// Amount, source and paid_by are deliberately absent: those belong to the
+// payment row, not the commitment, and editing them here would silently
+// desync the fund ledger. See ExpensePayments for how money is corrected.
+export type UpdateExpenseInput = {
+  id: string
+  category_id?: string
+  description?: string
+  payee?: string | null
+  note?: string | null
+}
 
 export function useUpdateExpense() {
   const queryClient = useQueryClient()
