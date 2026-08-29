@@ -10,6 +10,7 @@ import { useCommitteeMembers, useCommitteeReimbursements } from '../committee/us
 import { computeBalance } from '../../domain/balance'
 import { computeBudget, computeShortfall } from '../../domain/budget'
 import { buildActivity } from '../../domain/activity'
+import { StatCard } from '../../components/common/StatCard'
 import { formatINR, formatDate } from '../../lib/format'
 
 export function HomePage() {
@@ -108,6 +109,23 @@ export function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Available vs yet to pay */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Available" value={formatINR(balance.available)} />
+        <StatCard
+          label="Yet to pay"
+          value={formatINR(balance.outstanding)}
+          tone={balance.outstanding > 0 ? 'neg' : 'default'}
+        />
+      </div>
+      {balance.outstanding > 0 && (
+        <p className={balance.freeAfterDues < 0 ? 'text-neg text-sm' : 'text-ink-soft text-sm'}>
+          {balance.freeAfterDues < 0
+            ? `Committed ${formatINR(-balance.freeAfterDues)} more than the fund holds`
+            : `${formatINR(balance.freeAfterDues)} free after dues`}
+        </p>
+      )}
 
       {/* Quick actions */}
       <div className="grid grid-cols-2 gap-3">

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useExpenses } from './useExpenses'
+import { useExpenseStatus } from './useExpensePayments'
 import { ExpenseForm } from './ExpenseForm'
 import { useCategories } from '../categories/useCategories'
 import { formatINR } from '../../lib/format'
-import type { Category, SpendSource } from '../../types/db'
+import type { Category, ExpenseStatus, SpendSource } from '../../types/db'
 
 function SourcePill({ source }: { source: SpendSource }) {
   const label = source === 'cash' ? 'Cash' : source === 'bank' ? 'Bank' : 'Self'
@@ -22,6 +23,7 @@ function SourcePill({ source }: { source: SpendSource }) {
 export function ExpensesListPage() {
   const { data: expenses, isLoading, isError, error } = useExpenses()
   const { data: categories } = useCategories()
+  const { data: statuses } = useExpenseStatus()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -31,6 +33,12 @@ export function ExpensesListPage() {
     for (const c of categories ?? []) map.set(c.id, c)
     return map
   }, [categories])
+
+  const statusByExpenseId = useMemo(() => {
+    const map = new Map<string, ExpenseStatus>()
+    for (const s of statuses ?? []) map.set(s.expense_id, s)
+    return map
+  }, [statuses])
 
   const filtered = useMemo(() => {
     const rows = expenses ?? []
@@ -83,26 +91,34 @@ export function ExpensesListPage() {
       )}
 
       <ul className="flex flex-col gap-2">
-        {filtered.map((expense) => (
-          <li key={expense.id}>
-            <button
-              type="button"
-              onClick={() => navigate(`/spend/${expense.id}`)}
-              className="w-full flex items-center justify-between gap-3 bg-surface border border-line rounded-xl px-4 py-3 text-left"
-            >
-              <div className="flex flex-col gap-1 min-w-0">
-                <span className="text-ink font-semibold truncate">{expense.description}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-soft truncate">
-                    {categoryById.get(expense.category_id)?.name ?? 'Uncategorized'}
-                  </span>
-                  <SourcePill source={expense.source} />
+        {filtered.map((expense) => {
+          const status = statusByExpenseId.get(expense.id)
+          return (
+            <li key={expense.id}>
+              <button
+                type="button"
+                onClick={() => navigate(`/spend/${expense.id}`)}
+                className="w-full flex items-center justify-between gap-3 bg-surface border border-line rounded-xl px-4 py-3 text-left"
+              >
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-ink font-semibold truncate">{expense.description}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ink-soft truncate">
+                      {categoryById.get(expense.category_id)?.name ?? 'Uncategorized'}
+                    </span>
+                    <SourcePill source={expense.source} />
+                    {status && status.balance > 0 && (
+                      <span className="text-xs text-neg border border-line rounded-full px-2 py-0.5">
+                        {formatINR(status.balance)} due
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <span className="text-ink font-bold whitespace-nowrap">{formatINR(expense.amount)}</span>
-            </button>
-          </li>
-        ))}
+                <span className="text-ink font-bold whitespace-nowrap">{formatINR(expense.amount)}</span>
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
