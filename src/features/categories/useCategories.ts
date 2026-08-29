@@ -1,9 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { expenseKeys } from '../expenses/useExpenses'
+import { estimateKeys } from '../budget/useEstimates'
 import type { Category } from '../../types/db'
 
 export const categoryKeys = {
   all: ['categories'] as const,
+  usage: ['categories', 'usage'] as const,
+}
+
+/** What is filed under each category — drives the delete dialog. */
+export interface CategoryUsage {
+  category_id: string
+  expense_count: number
+  total_amount: number
+}
+
+export function useCategoryUsage() {
+  return useQuery({
+    queryKey: categoryKeys.usage,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('category_usage').select('*')
+      if (error) throw new Error(error.message)
+      return data as CategoryUsage[]
+    },
+  })
 }
 
 export function useCategories() {
@@ -73,20 +94,31 @@ export function useRenameCategory() {
   })
 }
 
+export interface DeleteCategoryInput {
+  category: Category
+  /** Required when the category still has expenses; they are moved here first. */
+  moveToId?: string
+}
+
 export function useDeleteCategory() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (category: Category) => {
+    mutationFn: async ({ category, moveToId }: DeleteCategoryInput) => {
       if (!canDeleteCategory(category)) {
         throw new Error('This category is locked and cannot be removed.')
       }
-      const { error } = await supabase.from('categories').delete().eq('id', category.id)
+      const { error } = await supabase.rpc('delete_category', {
+        p_category_id: category.id,
+        p_move_to: moveToId ?? null,
+      })
       if (error) throw new Error(error.message)
       return category.id
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all })
+      queryClient.invalidateQueries({ queryKey: expenseKeys.all })
+      queryClient.invalidateQueries({ queryKey: estimateKeys.all })
     },
   })
 }
