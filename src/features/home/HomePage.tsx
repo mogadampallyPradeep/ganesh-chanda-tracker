@@ -3,21 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { useDonations } from '../donations/useDonations'
 import { useExpenses } from '../expenses/useExpenses'
+import { useExpensePayments } from '../expenses/useExpensePayments'
 import { useCategories } from '../categories/useCategories'
 import { useEstimates } from '../budget/useEstimates'
-import { useCommitteeReimbursements } from '../committee/useCommittee'
+import { useCommitteeMembers, useCommitteeReimbursements } from '../committee/useCommittee'
 import { computeBalance } from '../../domain/balance'
 import { computeBudget, computeShortfall } from '../../domain/budget'
+import { buildActivity } from '../../domain/activity'
+import { StatCard } from '../../components/common/StatCard'
 import { formatINR, formatDate } from '../../lib/format'
-
-interface Activity {
-  id: string
-  kind: 'in' | 'out'
-  title: string
-  subtitle: string
-  amount: number
-  createdAt: string
-}
 
 export function HomePage() {
   const { member, isAdmin } = useAuth()
@@ -25,64 +19,57 @@ export function HomePage() {
 
   const donationsQuery = useDonations()
   const expensesQuery = useExpenses()
+  const paymentsQuery = useExpensePayments()
   const categoriesQuery = useCategories()
   const estimatesQuery = useEstimates()
   const reimbursementsQuery = useCommitteeReimbursements()
+  const membersQuery = useCommitteeMembers()
 
   const loading =
     donationsQuery.isLoading ||
     expensesQuery.isLoading ||
+    paymentsQuery.isLoading ||
     categoriesQuery.isLoading ||
     estimatesQuery.isLoading ||
-    reimbursementsQuery.isLoading
+    reimbursementsQuery.isLoading ||
+    membersQuery.isLoading
   const loadError =
     donationsQuery.error ??
     expensesQuery.error ??
+    paymentsQuery.error ??
     categoriesQuery.error ??
     estimatesQuery.error ??
-    reimbursementsQuery.error
+    reimbursementsQuery.error ??
+    membersQuery.error
 
   const donations = donationsQuery.data ?? []
   const expenses = expensesQuery.data ?? []
+  const payments = paymentsQuery.data ?? []
   const categories = categoriesQuery.data ?? []
   const estimates = estimatesQuery.data ?? []
   const reimbursements = reimbursementsQuery.data ?? []
+  const members = membersQuery.data ?? []
 
   const balance = useMemo(
-    () => computeBalance(donations, expenses, reimbursements),
-    [donations, expenses, reimbursements],
+    () => computeBalance(donations, expenses, payments, reimbursements),
+    [donations, expenses, payments, reimbursements],
   )
   const budget = useMemo(
-    () => computeBudget(categories, estimates, expenses),
-    [categories, estimates, expenses],
+    () => computeBudget(categories, estimates, expenses, payments),
+    [categories, estimates, expenses, payments],
   )
   const shortfall = useMemo(
-    () => computeShortfall(budget.totalEstimated, balance.collected, balance.spent),
-    [budget.totalEstimated, balance.collected, balance.spent],
+    () => computeShortfall(budget.totalEstimated, balance.collected, balance.committed),
+    [budget.totalEstimated, balance.collected, balance.committed],
   )
 
-  const recent = useMemo<Activity[]>(() => {
-    const catName = new Map(categories.map((c) => [c.id, c.name]))
-    const ins: Activity[] = donations.map((d) => ({
-      id: `d-${d.id}`,
-      kind: 'in',
-      title: d.donor_name,
-      subtitle: d.method === 'online' ? 'Online' : 'Offline',
-      amount: d.amount,
-      createdAt: d.created_at,
-    }))
-    const outs: Activity[] = expenses.map((e) => ({
-      id: `e-${e.id}`,
-      kind: 'out',
-      title: catName.get(e.category_id) ?? 'Spend',
-      subtitle: e.description,
-      amount: e.amount,
-      createdAt: e.created_at,
-    }))
-    return [...ins, ...outs]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 5)
-  }, [donations, expenses, categories])
+  const recent = useMemo(
+    () =>
+      buildActivity(donations, expenses, payments, reimbursements, categories, members)
+        .filter((a) => a.kind !== 'settled')
+        .slice(0, 5),
+    [donations, expenses, payments, reimbursements, categories, members],
+  )
 
   if (loading) {
     return <div className="p-6 text-center text-ink-soft">Loading dashboard…</div>
@@ -118,10 +105,27 @@ export function HomePage() {
           </div>
           <div className="rounded-xl bg-white/15 px-3 py-2">
             <p className="text-xs opacity-90">Spent</p>
-            <p className="font-bold text-lg mt-0.5">{formatINR(balance.spent)}</p>
+            <p className="font-bold text-lg mt-0.5">{formatINR(balance.paidOut)}</p>
           </div>
         </div>
       </div>
+
+      {/* Available vs yet to pay */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Available" value={formatINR(balance.available)} />
+        <StatCard
+          label="Yet to pay"
+          value={formatINR(balance.outstanding)}
+          tone={balance.outstanding > 0 ? 'neg' : 'default'}
+        />
+      </div>
+      {(balance.outstanding > 0 || balance.unreimbursedPersonal > 0) && (
+        <p className={balance.freeAfterDues < 0 ? 'text-neg text-sm' : 'text-ink-soft text-sm'}>
+          {balance.freeAfterDues < 0
+            ? `Committed ${formatINR(-balance.freeAfterDues)} more than the fund holds`
+            : `${formatINR(balance.freeAfterDues)} free after dues`}
+        </p>
+      )}
 
       {/* Quick actions */}
       <div className="grid grid-cols-2 gap-3">
@@ -200,19 +204,19 @@ export function HomePage() {
               <li key={a.id} className="flex items-center gap-3 py-2.5">
                 <span
                   className={`grid place-items-center w-8 h-8 rounded-full shrink-0 bg-surface-2 text-base font-bold ${
-                    a.kind === 'in' ? 'text-pos' : 'text-neg'
+                    a.kind === 'collected' ? 'text-pos' : 'text-neg'
                   }`}
                 >
-                  {a.kind === 'in' ? '↓' : '↑'}
+                  {a.kind === 'collected' ? '↓' : '↑'}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-ink font-medium truncate">{a.title}</p>
                   <p className="text-xs text-ink-soft truncate">
-                    {a.subtitle} · {formatDate(a.createdAt)}
+                    {a.detail} · {formatDate(a.createdAt)}
                   </p>
                 </div>
-                <p className={`font-bold whitespace-nowrap ${a.kind === 'in' ? 'text-pos' : 'text-neg'}`}>
-                  {a.kind === 'in' ? '+' : '−'}
+                <p className={`font-bold whitespace-nowrap ${a.kind === 'collected' ? 'text-pos' : 'text-neg'}`}>
+                  {a.kind === 'collected' ? '+' : '−'}
                   {formatINR(a.amount)}
                 </p>
               </li>

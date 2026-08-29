@@ -1,20 +1,33 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useExpenses } from './useExpenses'
+import { useExpensePayments, useExpenseStatus } from './useExpensePayments'
 import { ExpenseForm } from './ExpenseForm'
 import { useCategories } from '../categories/useCategories'
 import { formatINR } from '../../lib/format'
-import type { Category, SpendSource } from '../../types/db'
+import type { Category, ExpenseStatus, SpendSource } from '../../types/db'
 
-function SourcePill({ source }: { source: SpendSource }) {
-  const label = source === 'cash' ? 'Cash' : source === 'bank' ? 'Bank' : 'Self'
+// Where the money actually came from, read off the payments. The expense row's
+// own `source` is a leftover from before payments existed and lies as soon as
+// an expense is booked one way and settled another.
+type PaidFrom = SpendSource | 'mixed' | 'unpaid'
+
+const paidFromLabel: Record<PaidFrom, string> = {
+  cash: 'Cash',
+  bank: 'Bank',
+  personal: 'Self',
+  mixed: 'Mixed',
+  unpaid: 'Unpaid',
+}
+
+function SourcePill({ paidFrom }: { paidFrom: PaidFrom }) {
   return (
     <span
       className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-        source === 'personal' ? 'bg-primary/10 text-primary' : 'bg-surface-2 text-ink-soft'
+        paidFrom === 'personal' ? 'bg-primary/10 text-primary' : 'bg-surface-2 text-ink-soft'
       }`}
     >
-      {label}
+      {paidFromLabel[paidFrom]}
     </span>
   )
 }
@@ -22,6 +35,8 @@ function SourcePill({ source }: { source: SpendSource }) {
 export function ExpensesListPage() {
   const { data: expenses, isLoading, isError, error } = useExpenses()
   const { data: categories } = useCategories()
+  const { data: statuses } = useExpenseStatus()
+  const { data: payments } = useExpensePayments()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -31,6 +46,26 @@ export function ExpensesListPage() {
     for (const c of categories ?? []) map.set(c.id, c)
     return map
   }, [categories])
+
+  const statusByExpenseId = useMemo(() => {
+    const map = new Map<string, ExpenseStatus>()
+    for (const s of statuses ?? []) map.set(s.expense_id, s)
+    return map
+  }, [statuses])
+
+  const paidFromByExpenseId = useMemo(() => {
+    const sources = new Map<string, Set<SpendSource>>()
+    for (const p of payments ?? []) {
+      const seen = sources.get(p.expense_id) ?? new Set<SpendSource>()
+      seen.add(p.source)
+      sources.set(p.expense_id, seen)
+    }
+    const map = new Map<string, PaidFrom>()
+    for (const [expenseId, seen] of sources) {
+      map.set(expenseId, seen.size === 1 ? [...seen][0] : 'mixed')
+    }
+    return map
+  }, [payments])
 
   const filtered = useMemo(() => {
     const rows = expenses ?? []
@@ -83,26 +118,34 @@ export function ExpensesListPage() {
       )}
 
       <ul className="flex flex-col gap-2">
-        {filtered.map((expense) => (
-          <li key={expense.id}>
-            <button
-              type="button"
-              onClick={() => navigate(`/spend/${expense.id}`)}
-              className="w-full flex items-center justify-between gap-3 bg-surface border border-line rounded-xl px-4 py-3 text-left"
-            >
-              <div className="flex flex-col gap-1 min-w-0">
-                <span className="text-ink font-semibold truncate">{expense.description}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-soft truncate">
-                    {categoryById.get(expense.category_id)?.name ?? 'Uncategorized'}
-                  </span>
-                  <SourcePill source={expense.source} />
+        {filtered.map((expense) => {
+          const status = statusByExpenseId.get(expense.id)
+          return (
+            <li key={expense.id}>
+              <button
+                type="button"
+                onClick={() => navigate(`/spend/${expense.id}`)}
+                className="w-full flex items-center justify-between gap-3 bg-surface border border-line rounded-xl px-4 py-3 text-left"
+              >
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-ink font-semibold truncate">{expense.description}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ink-soft truncate">
+                      {categoryById.get(expense.category_id)?.name ?? 'Uncategorized'}
+                    </span>
+                    <SourcePill paidFrom={paidFromByExpenseId.get(expense.id) ?? 'unpaid'} />
+                    {status && status.balance > 0 && (
+                      <span className="text-xs text-neg border border-line rounded-full px-2 py-0.5">
+                        {formatINR(status.balance)} due
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <span className="text-ink font-bold whitespace-nowrap">{formatINR(expense.amount)}</span>
-            </button>
-          </li>
-        ))}
+                <span className="text-ink font-bold whitespace-nowrap">{formatINR(expense.amount)}</span>
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

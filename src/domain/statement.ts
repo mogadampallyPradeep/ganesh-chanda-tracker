@@ -1,4 +1,4 @@
-import type { DonationMethod, SpendSource } from '../types/db'
+import type { DonationMethod } from '../types/db'
 
 export interface PublicDonationRow {
   receipt_no: string | null
@@ -10,11 +10,14 @@ export interface PublicExpenseRow {
   category_name: string
   description: string
   amount: number
-  source: SpendSource
+  paid: number
+  balance: number
 }
 export interface StatementSummary {
   collected: number
+  committed: number
   spent: number
+  outstanding: number
   available: number
   cashInHand: number
   inBank: number
@@ -33,14 +36,18 @@ export function buildStatementSheets(input: {
   input.donations.forEach((d) => donations.push([d.receipt_no ?? '', d.donor_name, d.method, d.amount]))
   donations.push(['', '', 'Total Collected', input.summary.collected])
 
-  const expenses: Sheet = [['Category', 'Description', 'Source', 'Amount']]
-  input.expenses.forEach((e) => expenses.push([e.category_name, e.description, e.source, e.amount]))
-  expenses.push(['', '', 'Total Spent', input.summary.spent])
+  const expenses: Sheet = [['Category', 'Description', 'Total', 'Paid', 'Balance']]
+  input.expenses.forEach((e) =>
+    expenses.push([e.category_name, e.description, e.amount, e.paid, e.balance])
+  )
+  expenses.push(['', 'Total Committed', input.summary.committed, '', ''])
 
   const s = input.summary
   const summary: Sheet = [
     ['Collected', s.collected],
-    ['Spent', s.spent],
+    ['Committed', s.committed],
+    ['Paid out', s.spent],
+    ['Yet to pay', s.outstanding],
     ['Available (cash + bank)', s.available],
     ['Cash in hand', s.cashInHand],
     ['In bank', s.inBank],

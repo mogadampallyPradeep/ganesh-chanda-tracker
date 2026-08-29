@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useExpense, useDeleteExpense } from './useExpenses'
 import { ExpenseForm } from './ExpenseForm'
+import { ExpensePayments } from './ExpensePayments'
 import { useAuth } from '../auth/useAuth'
 
 export function ExpenseEditPage() {
@@ -41,6 +42,10 @@ export function ExpenseEditPage() {
               navigate('/spend', { replace: true })
             }}
           />
+
+          <div className="w-full max-w-sm">
+            <ExpensePayments expenseId={expense.id} total={expense.amount} />
+          </div>
 
           {isAdmin && (
             <div className="w-full max-w-sm flex flex-col gap-2">

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useCategories } from '../categories/useCategories'
 import { useExpenses } from '../expenses/useExpenses'
+import { useExpensePayments } from '../expenses/useExpensePayments'
 import { useDonations } from '../donations/useDonations'
 import { useCommitteeReimbursements } from '../committee/useCommittee'
 import { useEstimates } from './useEstimates'
@@ -14,6 +15,7 @@ export function BudgetPage() {
   const categoriesQuery = useCategories()
   const estimatesQuery = useEstimates()
   const expensesQuery = useExpenses()
+  const paymentsQuery = useExpensePayments()
   const donationsQuery = useDonations()
   const reimbursementsQuery = useCommitteeReimbursements()
 
@@ -21,29 +23,39 @@ export function BudgetPage() {
     categoriesQuery.isLoading ||
     estimatesQuery.isLoading ||
     expensesQuery.isLoading ||
+    paymentsQuery.isLoading ||
     donationsQuery.isLoading ||
     reimbursementsQuery.isLoading
   const loadError =
-    categoriesQuery.error ?? estimatesQuery.error ?? expensesQuery.error ?? donationsQuery.error ?? reimbursementsQuery.error
+    categoriesQuery.error ??
+    estimatesQuery.error ??
+    expensesQuery.error ??
+    paymentsQuery.error ??
+    donationsQuery.error ??
+    reimbursementsQuery.error
 
   const [editingEstimates, setEditingEstimates] = useState(false)
 
   const categories = categoriesQuery.data ?? []
   const estimates = estimatesQuery.data ?? []
   const expenses = expensesQuery.data ?? []
+  const payments = paymentsQuery.data ?? []
   const donations = donationsQuery.data ?? []
   const reimbursements = reimbursementsQuery.data ?? []
 
-  const budget = useMemo(() => computeBudget(categories, estimates, expenses), [categories, estimates, expenses])
+  const budget = useMemo(
+    () => computeBudget(categories, estimates, expenses, payments),
+    [categories, estimates, expenses, payments],
+  )
 
   const balance = useMemo(
-    () => computeBalance(donations, expenses, reimbursements),
-    [donations, expenses, reimbursements],
+    () => computeBalance(donations, expenses, payments, reimbursements),
+    [donations, expenses, payments, reimbursements],
   )
 
   const shortfall = useMemo(
-    () => computeShortfall(budget.totalEstimated, balance.collected, balance.spent),
-    [budget.totalEstimated, balance.collected, balance.spent],
+    () => computeShortfall(budget.totalEstimated, balance.collected, balance.committed),
+    [budget.totalEstimated, balance.collected, balance.committed],
   )
 
   if (loading) {
@@ -139,10 +151,15 @@ function BudgetRowCard({ row }: { row: BudgetRow }) {
     <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold text-ink truncate">{row.name}</p>
-        <p className="text-sm text-ink-soft whitespace-nowrap">
-          <span className={`font-semibold ${row.over ? 'text-neg' : 'text-ink'}`}>{formatINR(row.actual)}</span> /{' '}
-          {formatINR(row.estimated)}
-        </p>
+        <div className="text-right">
+          <p className="text-sm text-ink-soft whitespace-nowrap">
+            <span className={`font-semibold ${row.over ? 'text-neg' : 'text-ink'}`}>{formatINR(row.actual)}</span> /{' '}
+            {formatINR(row.estimated)}
+          </p>
+          {row.paid !== row.actual && (
+            <span className="text-xs text-ink-soft">{formatINR(row.paid)} paid</span>
+          )}
+        </div>
       </div>
 
       <div className="h-2 rounded-full bg-surface-2 overflow-hidden mt-2">

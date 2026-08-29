@@ -51,7 +51,9 @@ export function PublicStatementPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatCard label="Collected" value={formatINR(summary.collected)} tone="pos" />
-        <StatCard label="Spent" value={formatINR(summary.spent)} tone="neg" />
+        <StatCard label="Committed" value={formatINR(summary.committed)} />
+        <StatCard label="Paid out" value={formatINR(summary.spent)} tone="neg" />
+        <StatCard label="Yet to pay" value={formatINR(summary.outstanding)} />
         <StatCard label="Available" value={formatINR(summary.available)} />
         <StatCard label="Cash in hand" value={formatINR(summary.cashInHand)} />
         <StatCard label="In bank" value={formatINR(summary.inBank)} />
@@ -87,6 +89,25 @@ export function PublicStatementPage() {
           amount: formatINR(d.amount),
         }))}
         totalRow={['', 'Total', formatINR(summary.collected)]}
+      />
+
+      <h2 className="font-display text-lg font-bold text-ink mb-2 mt-6">Expenses</h2>
+      <DataTable
+        columns={[
+          { key: 'category_name', label: 'Category' },
+          { key: 'description', label: 'Description' },
+          { key: 'total', label: 'Total', align: 'right' },
+          { key: 'paid', label: 'Paid', align: 'right' },
+          { key: 'balance', label: 'Balance', align: 'right' },
+        ]}
+        rows={expenses.map((e) => ({
+          category_name: e.category_name,
+          description: e.description,
+          total: formatINR(e.amount),
+          paid: formatINR(e.paid),
+          balance: formatINR(e.balance),
+        }))}
+        totalRow={['', 'Total Committed', formatINR(summary.committed), '', '']}
       />
     </div>
   )

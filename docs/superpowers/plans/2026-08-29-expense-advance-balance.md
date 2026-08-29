@@ -43,7 +43,7 @@ This migration is **additive only**. It does not drop `expenses.source` or `expe
 -- "total agreed". Actual movements of money live in expense_payments.
 --
 -- expenses.source / expenses.paid_by are intentionally LEFT IN PLACE here and
--- dropped in 0010, after the app has stopped reading them. That keeps the
+-- dropped in 0011, after the app has stopped reading them. That keeps the
 -- deployed frontend consistent with the database at every point in the rollout.
 
 create table expense_payments (
@@ -749,6 +749,22 @@ git commit -m "feat(expenses): record an advance when logging a spend"
 **Files:**
 - Create: `src/features/expenses/ExpensePayments.tsx`
 - Modify: `src/features/expenses/ExpenseEditPage.tsx`
+- Modify: `src/features/expenses/ExpenseForm.tsx` (edit mode only)
+- Modify: `src/features/expenses/useExpenses.ts` (`useUpdateExpense`)
+
+**Critical: this task also closes the edit-path hole.** Today the edit form
+still exposes Amount, Paid from and Paid by, and `useUpdateExpense` writes only
+to `expenses` — the payment row is never touched. Editing a ₹5,000 cash spend to
+"bank" leaves its payment as cash: cash in hand reads ₹5,000 short and the bank
+₹5,000 high, permanently and silently. Editing the amount from ₹5,000 to ₹6,000
+raises the commitment while `paidOut` stays ₹5,000, inventing a ₹1,000 balance
+on a spend that was settled.
+
+The fix is to stop editing money on the commitment: **remove Amount, Paid from
+and Paid by from the form in edit mode.** Category, description, payee and note
+stay editable. Money is edited in the payments list this task builds — that is
+where it lives now. Creating a new expense is unaffected: the form keeps all its
+fields in create mode (Task 7's flow).
 
 **Interfaces:**
 - Consumes: `useExpensePayments()`, `useAddPayment()`, `useDeletePayment()` (Task 2), `formatINR`/`formatDate` from `src/lib/format.ts`.
@@ -870,7 +886,25 @@ git commit -m "feat(expenses): payments list and add-payment on expense detail"
 
 **Interfaces:**
 - Consumes: `useExpenseStatus()` (Task 2), `Balance.outstanding` and `Balance.freeAfterDues` (Task 3).
-- Produces: no new exports.
+- Produces: `Balance.unreimbursedPersonal`; a corrected `freeAfterDues`.
+
+**This task also corrects `freeAfterDues` in `src/domain/balance.ts`.** As built
+in Task 3 it is `available − outstanding`, which overstates what is spendable: it
+ignores money the fund owes members for out-of-pocket spends. Owner's decision
+(2026-08-29) is to subtract that too. `computeBalance` therefore also takes
+reimbursements into a new figure:
+
+```ts
+const unreimbursedPersonal =
+  sum(payments.filter((p) => p.source === 'personal'), (p) => p.amount) -
+  sum(reimbursements, (r) => r.amount)
+
+freeAfterDues: available - outstanding - unreimbursedPersonal
+```
+
+Add `unreimbursedPersonal` to the `Balance` interface. It may go negative if
+members are over-reimbursed; do not clamp it, for the same reason
+`freeAfterDues` is not clamped.
 
 - [ ] **Step 1: Balance chip in the list**
 
@@ -918,7 +952,7 @@ git commit -m "feat(ui): show outstanding balance in list and on home"
 ### Task 10: Public statement and Excel export
 
 **Files:**
-- Create: `supabase/migrations/0009_public_views_payments.sql`
+- Create: `supabase/migrations/0010_public_views_payments.sql`
 - Modify: `src/domain/statement.ts`
 - Modify: `src/features/export/exportExcel.ts`
 - Modify: `src/features/export/useExportStatement.ts`
@@ -932,11 +966,20 @@ git commit -m "feat(ui): show outstanding balance in list and on home"
 - [ ] **Step 1: Update the public views**
 
 ```sql
--- supabase/migrations/0009_public_views_payments.sql
+-- supabase/migrations/0010_public_views_payments.sql
 -- Public statement reflects committed vs paid. Donor phone and address remain
 -- excluded, exactly as before.
+--
+-- The views are DROPPED and recreated, not replaced. CREATE OR REPLACE VIEW can
+-- only append columns — it cannot rename or retype an existing one. Both of
+-- these do exactly that (public_expenses: source -> paid at column 4;
+-- public_summary: spent -> committed at column 2), so a plain CREATE OR REPLACE
+-- fails with: cannot change name of view column "source" to "paid".
 
-create or replace view public_expenses as
+drop view if exists public_expenses;
+drop view if exists public_summary;
+
+create view public_expenses as
   select
     c.name as category_name,
     e.description,
@@ -948,7 +991,7 @@ create or replace view public_expenses as
   join categories c on c.id = e.category_id
   join expense_status s on s.expense_id = e.id;
 
-create or replace view public_summary as
+create view public_summary as
   select collected, committed, spent, outstanding, cash_in_hand, in_bank,
          (cash_in_hand + in_bank) as available
   from (
@@ -1008,7 +1051,7 @@ Open the public statement link and download the Excel export; confirm the part-p
 - [ ] **Step 7: Commit**
 
 ```bash
-git add supabase/migrations/0009_public_views_payments.sql src/domain/statement.ts src/features/export/ src/features/public/
+git add supabase/migrations/0010_public_views_payments.sql src/domain/statement.ts src/features/export/ src/features/public/
 git commit -m "feat(statement): public view and export show committed vs paid"
 ```
 
@@ -1017,7 +1060,7 @@ git commit -m "feat(statement): public view and export show committed vs paid"
 ### Task 11: Drop the superseded expense columns
 
 **Files:**
-- Create: `supabase/migrations/0010_drop_expense_source.sql`
+- Create: `supabase/migrations/0011_drop_expense_source.sql`
 - Modify: `src/types/db.ts`
 - Modify: `src/features/expenses/useExpenses.ts`
 
@@ -1026,6 +1069,22 @@ git commit -m "feat(statement): public view and export show committed vs paid"
 - Produces: `Expense` without `source` and `paid_by`.
 
 Run this **only after Tasks 1–10 are deployed and working**. This is the one destructive step in the feature, and by this point nothing reads the columns.
+
+**There is no two-step order that avoids a broken window, so this task is three steps.** `expenses.source` is `spend_source NOT NULL` with no default:
+
+- Drop the column first → the *currently deployed* code still writes `source` on every insert, and every new spend fails until the new code ships.
+- Deploy the new code first → it stops writing `source`, and every insert fails the `NOT NULL` constraint.
+
+Either order breaks expense creation for the length of a deploy. The fix is to
+make the column optional before either:
+
+1. **Migration `0011a`** — `alter table expenses alter column source drop not null;`
+   Safe on its own: old code keeps writing the column, new code may omit it.
+2. **Deploy** the code that stops writing `source` and `paid_by`.
+3. **Migration `0011b`** — drop both columns, once nothing has written them for a
+   full session.
+
+Steps 1 and 3 are separate files applied at different times. Do not collapse them.
 
 - [ ] **Step 1: Confirm nothing reads them**
 
@@ -1039,13 +1098,32 @@ Expected: no hits referring to an `Expense`. Fix any that remain before continui
 - [ ] **Step 2: Write the migration**
 
 ```sql
--- supabase/migrations/0010_drop_expense_source.sql
+-- supabase/migrations/0011a_source_nullable.sql
+-- Step 1 of 3. Makes the superseded column optional so the deploy in step 2 has
+-- no failing window. Reversible, and safe to sit in this state indefinitely.
+
+alter table expenses alter column source drop not null;
+```
+
+```sql
+-- supabase/migrations/0011b_drop_expense_source.sql
+-- Step 3 of 3. Run ONLY after the code from step 2 is live and has been used.
 -- Phase 2. These columns were superseded by expense_payments in 0008 and their
 -- values were copied there by that migration's backfill. Nothing reads them.
+--
+-- NEVER add CASCADE to these statements. If 0009 has not been run, the drop
+-- FAILS because 0005's public_expenses still selects expenses.source. That
+-- failure is the safe outcome. Adding CASCADE to "fix" it silently drops
+-- public_expenses AND public_summary, and the shared public statement link goes
+-- dead for everyone holding it. If this errors, run 0010 first — do not cascade.
 
 alter table expenses drop column source;
 alter table expenses drop column paid_by;
 ```
+
+**If either statement errors, stop and read the error.** The expected cause is a
+view still depending on the column, which means 0010 was skipped. Fix that by
+running 0010, never by cascading.
 
 - [ ] **Step 3: Back up first, then ask the human to run it**
 
@@ -1075,7 +1153,7 @@ Log a fresh spend end to end; confirm it appears in the list, the activity feed,
 - [ ] **Step 7: Commit**
 
 ```bash
-git add supabase/migrations/0010_drop_expense_source.sql src/types/db.ts src/features/expenses/useExpenses.ts
+git add supabase/migrations/0011_drop_expense_source.sql src/types/db.ts src/features/expenses/useExpenses.ts
 git commit -m "refactor(expenses): drop source and paid_by, superseded by payments"
 ```
 
@@ -1084,7 +1162,8 @@ git commit -m "refactor(expenses): drop source and paid_by, superseded by paymen
 ## Rollout order
 
 1. Tasks 1–9 built and merged, migration `0008` run **before** the frontend deploys.
-2. Task 10 — run `0009` before deploying, same rule.
-3. Task 11 last, once the app has been exercised in production for at least a session.
+2. Task 7 — run `0009` (the payment lock) before deploying.
+3. Task 10 — run `0010` before deploying, same rule.
+4. Task 11 last (`0011`), once the app has been exercised in production for at least a session.
 
 At every point between these steps the deployed app and the database agree, so a rollback is a `git revert` and a redeploy with no schema surgery.

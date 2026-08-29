@@ -64,3 +64,21 @@ export interface Reimbursement {
   source: ReimbSource
   created_at: string
 }
+
+export interface ExpensePayment {
+  id: string
+  expense_id: string
+  amount: number
+  source: SpendSource
+  paid_by: string | null
+  note: string | null
+  created_at: string
+}
+
+export interface ExpenseStatus {
+  expense_id: string
+  total: number
+  paid: number
+  balance: number
+  is_settled: boolean
+}

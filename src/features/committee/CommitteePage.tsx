@@ -11,6 +11,7 @@ import {
   useUpdateMemberName,
 } from './useCommittee'
 import { useExpenses } from '../expenses/useExpenses'
+import { useExpensePayments } from '../expenses/useExpensePayments'
 import { computeHoldings, type MemberHolding } from '../../domain/holdings'
 import { computeBalance } from '../../domain/balance'
 import { AmountInput } from '../../components/common/AmountInput'
@@ -23,21 +24,27 @@ export function CommitteePage() {
   const membersQuery = useCommitteeMembers()
   const donationsQuery = useDonations()
   const expensesQuery = useExpenses()
+  const paymentsQuery = useExpensePayments()
   const reimbursementsQuery = useCommitteeReimbursements()
 
   const loading =
-    membersQuery.isLoading || donationsQuery.isLoading || expensesQuery.isLoading || reimbursementsQuery.isLoading
-  const loadError = membersQuery.error ?? donationsQuery.error ?? expensesQuery.error ?? reimbursementsQuery.error
+    membersQuery.isLoading ||
+    donationsQuery.isLoading ||
+    expensesQuery.isLoading ||
+    paymentsQuery.isLoading ||
+    reimbursementsQuery.isLoading
+  const loadError =
+    membersQuery.error ?? donationsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? reimbursementsQuery.error
 
   const holdings = useMemo(() => {
     if (!membersQuery.data) return []
     return computeHoldings(
       membersQuery.data,
       donationsQuery.data ?? [],
-      expensesQuery.data ?? [],
+      paymentsQuery.data ?? [],
       reimbursementsQuery.data ?? [],
     )
-  }, [membersQuery.data, donationsQuery.data, expensesQuery.data, reimbursementsQuery.data])
+  }, [membersQuery.data, donationsQuery.data, paymentsQuery.data, reimbursementsQuery.data])
 
   // Single-treasurer model: the fund's cash/bank sits with whoever holds it,
   // shown once at the top. Per-member custody is not tracked — members only
@@ -47,9 +54,10 @@ export function CommitteePage() {
       computeBalance(
         donationsQuery.data ?? [],
         expensesQuery.data ?? [],
+        paymentsQuery.data ?? [],
         reimbursementsQuery.data ?? [],
       ),
-    [donationsQuery.data, expensesQuery.data, reimbursementsQuery.data],
+    [donationsQuery.data, expensesQuery.data, paymentsQuery.data, reimbursementsQuery.data],
   )
 
   const [settlingFor, setSettlingFor] = useState<string | null>(null)
@@ -230,10 +238,16 @@ function MemberCard({
             </>
           )}
         </div>
-        {holding.owedBack > 0 && (
+        {holding.owedBack !== 0 && (
           <div className="text-right">
-            <p className="text-[10px] text-ink-soft tracking-wide uppercase">Owed back</p>
-            <p className="font-display text-lg font-bold text-pos">{formatINR(holding.owedBack)}</p>
+            <p className="text-[10px] text-ink-soft tracking-wide uppercase">
+              {holding.owedBack > 0 ? 'Owed back' : 'Over-settled'}
+            </p>
+            <p
+              className={`font-display text-lg font-bold ${holding.owedBack > 0 ? 'text-pos' : 'text-neg'}`}
+            >
+              {formatINR(Math.abs(holding.owedBack))}
+            </p>
           </div>
         )}
       </div>
