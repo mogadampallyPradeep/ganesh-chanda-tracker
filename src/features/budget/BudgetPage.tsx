@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useCategories } from '../categories/useCategories'
 import { useExpenses } from '../expenses/useExpenses'
+import { useExpensePayments } from '../expenses/useExpensePayments'
 import { useDonations } from '../donations/useDonations'
 import { useCommitteeReimbursements } from '../committee/useCommittee'
 import { useEstimates } from './useEstimates'
@@ -14,6 +15,7 @@ export function BudgetPage() {
   const categoriesQuery = useCategories()
   const estimatesQuery = useEstimates()
   const expensesQuery = useExpenses()
+  const paymentsQuery = useExpensePayments()
   const donationsQuery = useDonations()
   const reimbursementsQuery = useCommitteeReimbursements()
 
@@ -21,29 +23,36 @@ export function BudgetPage() {
     categoriesQuery.isLoading ||
     estimatesQuery.isLoading ||
     expensesQuery.isLoading ||
+    paymentsQuery.isLoading ||
     donationsQuery.isLoading ||
     reimbursementsQuery.isLoading
   const loadError =
-    categoriesQuery.error ?? estimatesQuery.error ?? expensesQuery.error ?? donationsQuery.error ?? reimbursementsQuery.error
+    categoriesQuery.error ??
+    estimatesQuery.error ??
+    expensesQuery.error ??
+    paymentsQuery.error ??
+    donationsQuery.error ??
+    reimbursementsQuery.error
 
   const [editingEstimates, setEditingEstimates] = useState(false)
 
   const categories = categoriesQuery.data ?? []
   const estimates = estimatesQuery.data ?? []
   const expenses = expensesQuery.data ?? []
+  const payments = paymentsQuery.data ?? []
   const donations = donationsQuery.data ?? []
   const reimbursements = reimbursementsQuery.data ?? []
 
   const budget = useMemo(() => computeBudget(categories, estimates, expenses), [categories, estimates, expenses])
 
   const balance = useMemo(
-    () => computeBalance(donations, expenses, reimbursements),
-    [donations, expenses, reimbursements],
+    () => computeBalance(donations, expenses, payments, reimbursements),
+    [donations, expenses, payments, reimbursements],
   )
 
   const shortfall = useMemo(
-    () => computeShortfall(budget.totalEstimated, balance.collected, balance.spent),
-    [budget.totalEstimated, balance.collected, balance.spent],
+    () => computeShortfall(budget.totalEstimated, balance.collected, balance.committed),
+    [budget.totalEstimated, balance.collected, balance.committed],
   )
 
   if (loading) {

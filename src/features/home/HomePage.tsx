@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { useDonations } from '../donations/useDonations'
 import { useExpenses } from '../expenses/useExpenses'
+import { useExpensePayments } from '../expenses/useExpensePayments'
 import { useCategories } from '../categories/useCategories'
 import { useEstimates } from '../budget/useEstimates'
 import { useCommitteeReimbursements } from '../committee/useCommittee'
@@ -25,6 +26,7 @@ export function HomePage() {
 
   const donationsQuery = useDonations()
   const expensesQuery = useExpenses()
+  const paymentsQuery = useExpensePayments()
   const categoriesQuery = useCategories()
   const estimatesQuery = useEstimates()
   const reimbursementsQuery = useCommitteeReimbursements()
@@ -32,33 +34,36 @@ export function HomePage() {
   const loading =
     donationsQuery.isLoading ||
     expensesQuery.isLoading ||
+    paymentsQuery.isLoading ||
     categoriesQuery.isLoading ||
     estimatesQuery.isLoading ||
     reimbursementsQuery.isLoading
   const loadError =
     donationsQuery.error ??
     expensesQuery.error ??
+    paymentsQuery.error ??
     categoriesQuery.error ??
     estimatesQuery.error ??
     reimbursementsQuery.error
 
   const donations = donationsQuery.data ?? []
   const expenses = expensesQuery.data ?? []
+  const payments = paymentsQuery.data ?? []
   const categories = categoriesQuery.data ?? []
   const estimates = estimatesQuery.data ?? []
   const reimbursements = reimbursementsQuery.data ?? []
 
   const balance = useMemo(
-    () => computeBalance(donations, expenses, reimbursements),
-    [donations, expenses, reimbursements],
+    () => computeBalance(donations, expenses, payments, reimbursements),
+    [donations, expenses, payments, reimbursements],
   )
   const budget = useMemo(
     () => computeBudget(categories, estimates, expenses),
     [categories, estimates, expenses],
   )
   const shortfall = useMemo(
-    () => computeShortfall(budget.totalEstimated, balance.collected, balance.spent),
-    [budget.totalEstimated, balance.collected, balance.spent],
+    () => computeShortfall(budget.totalEstimated, balance.collected, balance.committed),
+    [budget.totalEstimated, balance.collected, balance.committed],
   )
 
   const recent = useMemo<Activity[]>(() => {
@@ -118,7 +123,7 @@ export function HomePage() {
           </div>
           <div className="rounded-xl bg-white/15 px-3 py-2">
             <p className="text-xs opacity-90">Spent</p>
-            <p className="font-bold text-lg mt-0.5">{formatINR(balance.spent)}</p>
+            <p className="font-bold text-lg mt-0.5">{formatINR(balance.paidOut)}</p>
           </div>
         </div>
       </div>

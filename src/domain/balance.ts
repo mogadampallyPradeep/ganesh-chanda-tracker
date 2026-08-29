@@ -1,9 +1,12 @@
-import type { Donation, Expense, Reimbursement } from '../types/db'
+import type { Donation, Expense, ExpensePayment, Reimbursement } from '../types/db'
 
 export interface Balance {
   collected: number
-  spent: number
-  available: number
+  committed: number // total agreed across all expenses
+  paidOut: number // money that has actually left the fund
+  outstanding: number // committed − paidOut, i.e. yet to pay
+  available: number // cash in hand + in bank (real money)
+  freeAfterDues: number // available − outstanding; negative is a real warning
   cashInHand: number
   inBank: number
 }
@@ -12,28 +15,40 @@ const sum = <T,>(rows: T[], pick: (r: T) => number) => rows.reduce((t, r) => t +
 
 /**
  * Fund balance, derived from rows (never stored).
- * - collected = all donations, spent = all expenses (any source)
- * - cash in hand = offline donations − cash spends − cash reimbursements
- * - in bank      = online donations − bank spends − bank reimbursements
- * - available    = cash in hand + in bank (the real money on hand)
+ * Cash and bank move on PAYMENTS, not on expense totals — an unpaid balance
+ * has not left the fund and must not be deducted from it.
  */
 export function computeBalance(
   donations: Pick<Donation, 'amount' | 'method'>[],
-  expenses: Pick<Expense, 'amount' | 'source'>[],
+  expenses: Pick<Expense, 'amount'>[],
+  payments: Pick<ExpensePayment, 'amount' | 'source'>[],
   reimbursements: Pick<Reimbursement, 'amount' | 'source'>[] = [],
 ): Balance {
   const collected = sum(donations, (d) => d.amount)
-  const spent = sum(expenses, (e) => e.amount)
+  const committed = sum(expenses, (e) => e.amount)
+  const paidOut = sum(payments, (p) => p.amount)
 
   const cashInHand =
     sum(donations.filter((d) => d.method === 'offline'), (d) => d.amount) -
-    sum(expenses.filter((e) => e.source === 'cash'), (e) => e.amount) -
+    sum(payments.filter((p) => p.source === 'cash'), (p) => p.amount) -
     sum(reimbursements.filter((r) => r.source === 'cash'), (r) => r.amount)
 
   const inBank =
     sum(donations.filter((d) => d.method === 'online'), (d) => d.amount) -
-    sum(expenses.filter((e) => e.source === 'bank'), (e) => e.amount) -
+    sum(payments.filter((p) => p.source === 'bank'), (p) => p.amount) -
     sum(reimbursements.filter((r) => r.source === 'bank'), (r) => r.amount)
 
-  return { collected, spent, cashInHand, inBank, available: cashInHand + inBank }
+  const available = cashInHand + inBank
+  const outstanding = committed - paidOut
+
+  return {
+    collected,
+    committed,
+    paidOut,
+    outstanding,
+    available,
+    freeAfterDues: available - outstanding,
+    cashInHand,
+    inBank,
+  }
 }

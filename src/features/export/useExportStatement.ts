@@ -1,11 +1,12 @@
 import { useCategories } from '../categories/useCategories'
 import { useDonations } from '../donations/useDonations'
 import { useExpenses } from '../expenses/useExpenses'
+import { useExpensePayments } from '../expenses/useExpensePayments'
 import { useCommitteeReimbursements } from '../committee/useCommittee'
 import { useFundSettings } from '../settings/useFundSettings'
 import { computeBalance } from '../../domain/balance'
 import { downloadStatement } from './exportExcel'
-import type { PublicDonationRow, PublicExpenseRow } from '../../domain/statement'
+import type { PublicDonationRow, PublicExpenseRow, StatementSummary } from '../../domain/statement'
 
 // Assembles the full (authenticated) statement from the already-cached queries
 // and downloads it as an .xlsx. Returns a ready flag so callers can disable the
@@ -14,6 +15,7 @@ export function useExportStatement() {
   const categoriesQuery = useCategories()
   const donationsQuery = useDonations()
   const expensesQuery = useExpenses()
+  const paymentsQuery = useExpensePayments()
   const reimbursementsQuery = useCommitteeReimbursements()
   const fundSettingsQuery = useFundSettings()
 
@@ -21,6 +23,7 @@ export function useExportStatement() {
     categoriesQuery.isSuccess &&
     donationsQuery.isSuccess &&
     expensesQuery.isSuccess &&
+    paymentsQuery.isSuccess &&
     reimbursementsQuery.isSuccess
 
   const exportNow = () => {
@@ -28,6 +31,7 @@ export function useExportStatement() {
     const categories = categoriesQuery.data ?? []
     const donations = donationsQuery.data ?? []
     const expenses = expensesQuery.data ?? []
+    const payments = paymentsQuery.data ?? []
     const reimbursements = reimbursementsQuery.data ?? []
     const categoryName = new Map(categories.map((c) => [c.id, c.name]))
 
@@ -45,7 +49,14 @@ export function useExportStatement() {
       source: e.source,
     }))
 
-    const summary = computeBalance(donations, expenses, reimbursements)
+    const balance = computeBalance(donations, expenses, payments, reimbursements)
+    const summary: StatementSummary = {
+      collected: balance.collected,
+      spent: balance.paidOut,
+      available: balance.available,
+      cashInHand: balance.cashInHand,
+      inBank: balance.inBank,
+    }
     const year = fundSettingsQuery.data?.festival_year
     const filename = year ? `atharvnidhi-statement-${year}.xlsx` : 'atharvnidhi-statement.xlsx'
 

@@ -11,6 +11,7 @@ import {
   useUpdateMemberName,
 } from './useCommittee'
 import { useExpenses } from '../expenses/useExpenses'
+import { useExpensePayments } from '../expenses/useExpensePayments'
 import { computeHoldings, type MemberHolding } from '../../domain/holdings'
 import { computeBalance } from '../../domain/balance'
 import { AmountInput } from '../../components/common/AmountInput'
@@ -23,11 +24,17 @@ export function CommitteePage() {
   const membersQuery = useCommitteeMembers()
   const donationsQuery = useDonations()
   const expensesQuery = useExpenses()
+  const paymentsQuery = useExpensePayments()
   const reimbursementsQuery = useCommitteeReimbursements()
 
   const loading =
-    membersQuery.isLoading || donationsQuery.isLoading || expensesQuery.isLoading || reimbursementsQuery.isLoading
-  const loadError = membersQuery.error ?? donationsQuery.error ?? expensesQuery.error ?? reimbursementsQuery.error
+    membersQuery.isLoading ||
+    donationsQuery.isLoading ||
+    expensesQuery.isLoading ||
+    paymentsQuery.isLoading ||
+    reimbursementsQuery.isLoading
+  const loadError =
+    membersQuery.error ?? donationsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? reimbursementsQuery.error
 
   const holdings = useMemo(() => {
     if (!membersQuery.data) return []
@@ -47,9 +54,10 @@ export function CommitteePage() {
       computeBalance(
         donationsQuery.data ?? [],
         expensesQuery.data ?? [],
+        paymentsQuery.data ?? [],
         reimbursementsQuery.data ?? [],
       ),
-    [donationsQuery.data, expensesQuery.data, reimbursementsQuery.data],
+    [donationsQuery.data, expensesQuery.data, paymentsQuery.data, reimbursementsQuery.data],
   )
 
   const [settlingFor, setSettlingFor] = useState<string | null>(null)
