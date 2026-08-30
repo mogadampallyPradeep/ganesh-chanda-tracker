@@ -41,6 +41,7 @@ export interface CreateExpenseWithPaymentInput {
   category_id: string
   description: string
   payee: string | null
+  payee_phone: string | null
   amount: number
   paid_now: number
   paid_by: string
@@ -101,6 +102,7 @@ export type UpdateExpenseInput = {
   category_id?: string
   description?: string
   payee?: string | null
+  payee_phone?: string | null
   amount?: number
   note?: string | null
 }

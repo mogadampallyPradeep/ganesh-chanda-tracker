@@ -49,6 +49,7 @@ export interface Expense {
   category_id: string
   description: string
   payee: string | null
+  payee_phone: string | null
   amount: number
   paid_by: string | null
   source: SpendSource

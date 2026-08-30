@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useExpense, useDeleteExpense } from './useExpenses'
 import { ExpenseForm } from './ExpenseForm'
 import { ExpensePayments } from './ExpensePayments'
+import { PayeeContact } from './PayeeContact'
 import { useAuth } from '../auth/useAuth'
 
 export function ExpenseEditPage() {
@@ -42,6 +43,8 @@ export function ExpenseEditPage() {
               navigate('/spend', { replace: true })
             }}
           />
+
+          <PayeeContact payee={expense.payee} phone={expense.payee_phone} />
 
           <div className="w-full max-w-sm">
             <ExpensePayments expenseId={expense.id} total={expense.amount} />

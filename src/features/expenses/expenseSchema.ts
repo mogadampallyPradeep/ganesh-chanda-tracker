@@ -5,6 +5,7 @@ export const expenseSchema = z
     category_id: z.string().min(1, 'Category is required'),
     description: z.string().min(1, 'Description is required'),
     payee: z.string().optional(),
+    payee_phone: z.string().optional(),
     amount: z.number().int().positive('Enter an amount'),
     paid_now: z.number().int().min(0, 'Cannot be negative'),
     paid_by: z.string().min(1, 'Paid by is required'),
@@ -23,6 +24,7 @@ export const expenseEditSchema = z.object({
   category_id: z.string().min(1, 'Category is required'),
   description: z.string().min(1, 'Description is required'),
   payee: z.string().optional(),
+  payee_phone: z.string().optional(),
   amount: z.number().int().positive('Enter an amount'),
   note: z.string().optional(),
 })
