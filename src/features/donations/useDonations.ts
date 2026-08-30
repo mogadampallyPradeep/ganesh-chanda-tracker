@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { pledgeKeys } from '../pledges/keys'
 import type { Donation, DonationMethod } from '../../types/db'
 
 export const donationKeys = {
@@ -45,6 +46,7 @@ export interface CreateDonationInput {
   amount: number
   method: DonationMethod
   note: string | null
+  pledge_id?: string | null
 }
 
 export function useCreateDonation() {
@@ -63,6 +65,8 @@ export function useCreateDonation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: donationKeys.all })
+      queryClient.invalidateQueries({ queryKey: pledgeKeys.all })
+      queryClient.invalidateQueries({ queryKey: pledgeKeys.status })
     },
   })
 }
@@ -86,6 +90,8 @@ export function useUpdateDonation() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: donationKeys.all })
       queryClient.invalidateQueries({ queryKey: donationKeys.detail(data.id) })
+      queryClient.invalidateQueries({ queryKey: pledgeKeys.all })
+      queryClient.invalidateQueries({ queryKey: pledgeKeys.status })
     },
   })
 }
@@ -102,6 +108,8 @@ export function useDeleteDonation() {
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: donationKeys.all })
       queryClient.invalidateQueries({ queryKey: donationKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: pledgeKeys.all })
+      queryClient.invalidateQueries({ queryKey: pledgeKeys.status })
     },
   })
 }
