@@ -56,7 +56,7 @@ export function HomePage() {
   const reimbursements = reimbursementsQuery.data ?? []
   const members = membersQuery.data ?? []
   const pledges = pledgesQuery.data ?? []
-  const pledgeStatuses = pledgeStatusQuery.data ?? []
+  const pledgeStatuses = pledgeStatusQuery.data
 
   const balance = useMemo(
     () => computeBalance(donations, expenses, payments, reimbursements),
@@ -124,24 +124,24 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Available vs yet to pay, and (when in use) what's promised but not yet in hand */}
-      <div className={`grid gap-3 ${showExpected ? 'grid-cols-3' : 'grid-cols-2'}`}>
-        <StatCard label="Available" value={formatINR(balance.available)} dense={showExpected} />
+      {/* Available vs yet to pay, and (when in use) what's promised but not yet in hand.
+          Three rupee figures do not fit across a 360px phone, so the third takes its own
+          full-width row rather than being squeezed and clipped. */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Available" value={formatINR(balance.available)} />
         <StatCard
           label="Yet to pay"
           value={formatINR(balance.outstanding)}
           tone={balance.outstanding > 0 ? 'neg' : 'default'}
-          dense={showExpected}
         />
-        {showExpected && (
-          <StatCard
-            label="Yet to receive"
-            value={formatINR(pledgeSummary.expectedOutstanding)}
-            tone="pos"
-            dense
-          />
-        )}
       </div>
+      {showExpected && (
+        <StatCard
+          label="Yet to receive"
+          value={formatINR(pledgeSummary.expectedOutstanding)}
+          tone="pos"
+        />
+      )}
       {(balance.outstanding > 0 || balance.unreimbursedPersonal > 0) && (
         <p className={balance.freeAfterDues < 0 ? 'text-neg text-sm' : 'text-ink-soft text-sm'}>
           {balance.freeAfterDues < 0

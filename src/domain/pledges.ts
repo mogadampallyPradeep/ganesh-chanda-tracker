@@ -16,6 +16,8 @@ export interface PledgeSummary {
   expectedOutstanding: number
 }
 
+const EMPTY: PledgeSummary = { open: [], done: [], expectedOutstanding: 0 }
+
 /**
  * State precedence is received -> closed -> open: what actually happened matters
  * more than an administrative flag, and both non-open states are excluded from
@@ -24,8 +26,16 @@ export interface PledgeSummary {
  * expectedOutstanding floors EACH pledge at zero before summing. Flooring the
  * total instead would let one donor's over-payment silently cancel another
  * donor's outstanding promise.
+ *
+ * statuses is deliberately allowed to be undefined and returns nothing at all.
+ * Passing [] while the status query is still loading or retrying would make every
+ * pledge read as fully unpaid at its full promised amount, which is the shape a
+ * duplicate receipt gets recorded in. "Not known yet" must never render as zero
+ * received: callers gate on the query having actually succeeded.
  */
-export function buildPledges(pledges: Pledge[], statuses: PledgeStatus[]): PledgeSummary {
+export function buildPledges(pledges: Pledge[], statuses: PledgeStatus[] | undefined): PledgeSummary {
+  if (!statuses) return EMPTY
+
   const statusById = new Map(statuses.map((s) => [s.pledge_id, s]))
 
   const rows: PledgeRow[] = pledges.map((pledge) => {

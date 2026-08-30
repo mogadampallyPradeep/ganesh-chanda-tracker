@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDonations } from './useDonations'
 import { DonationForm } from './DonationForm'
 import { PledgeList } from '../pledges/PledgeList'
 import { usePledges, usePledgeStatus } from '../pledges/usePledges'
-import { buildPledges, type PledgeRow } from '../../domain/pledges'
+import { buildPledges } from '../../domain/pledges'
 import { formatINR } from '../../lib/format'
 import type { Donation } from '../../types/db'
 
@@ -28,7 +28,8 @@ export function DonationsListPage() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [tab, setTab] = useState<'received' | 'expected'>('received')
-  const [receiptFor, setReceiptFor] = useState<PledgeRow | null>(null)
+  const [receiptForId, setReceiptForId] = useState<string | null>(null)
+  const receiptRef = useRef<HTMLDivElement>(null)
 
   const filtered = useMemo(() => {
     const rows = donations ?? []
@@ -37,12 +38,33 @@ export function DonationsListPage() {
     return rows.filter((d) => d.donor_name.toLowerCase().includes(q))
   }, [donations, search])
 
-  const { expectedOutstanding } = buildPledges(pledges ?? [], statuses ?? [])
+  const { open, expectedOutstanding } = useMemo(
+    () => buildPledges(pledges ?? [], statuses),
+    [pledges, statuses],
+  )
   // Both queries must have landed: a missing status makes every pledge look untouched,
   // which would show an inflated figure here.
   const expectedKnown = pledgesLoaded && statusesLoaded
   const expectedLabel =
     expectedKnown && expectedOutstanding > 0 ? `Expected (${formatINR(expectedOutstanding)})` : 'Expected'
+
+  // Re-derived every render rather than snapshotted at tap time, so an edit to the
+  // pledge moves the prefilled amount with it. If the pledge is gone from the open
+  // list — deleted, closed or now fully received — the form has nothing to save
+  // against and closes itself.
+  const receiptFor = receiptForId ? open.find((r) => r.pledge.id === receiptForId) ?? null : null
+
+  useEffect(() => {
+    if (receiptForId && expectedKnown && !receiptFor) setReceiptForId(null)
+  }, [receiptForId, expectedKnown, receiptFor])
+
+  useEffect(() => {
+    if (!receiptForId) return
+    const el = receiptRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    el.querySelector('input')?.focus({ preventScroll: true })
+  }, [receiptForId])
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -138,21 +160,23 @@ export function DonationsListPage() {
       {tab === 'expected' && (
         <>
           {receiptFor && (
-            <div className="flex flex-col gap-2">
+            <div ref={receiptRef} className="flex flex-col gap-2 scroll-mt-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-display text-lg font-bold text-ink">
                   Receipt for {receiptFor.pledge.donor_name}
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setReceiptFor(null)}
+                  onClick={() => setReceiptForId(null)}
                   className="text-sm text-ink-soft border border-line rounded-xl px-3 py-2"
                 >
                   Cancel
                 </button>
               </div>
               <DonationForm
-                key={receiptFor.pledge.id}
+                key={`${receiptFor.pledge.id}:${receiptFor.balance}:${receiptFor.pledge.donor_name}:${
+                  receiptFor.pledge.phone ?? ''
+                }`}
                 prefill={{
                   pledge_id: receiptFor.pledge.id,
                   donor_name: receiptFor.pledge.donor_name,
@@ -160,7 +184,7 @@ export function DonationsListPage() {
                   amount: receiptFor.balance,
                 }}
                 onSaved={(donation, action) => {
-                  setReceiptFor(null)
+                  setReceiptForId(null)
                   if (action === 'share') {
                     navigate(`/collect/${donation.id}/receipt`)
                   }
@@ -169,7 +193,7 @@ export function DonationsListPage() {
             </div>
           )}
 
-          <PledgeList onRecordReceipt={setReceiptFor} />
+          <PledgeList onRecordReceipt={setReceiptForId} />
         </>
       )}
     </div>

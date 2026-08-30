@@ -39,6 +39,20 @@ export function useDonation(id: string) {
   })
 }
 
+// 23503 = foreign key violation. The only FK a donation can break is pledge_id,
+// which means the pledge was deleted between opening the receipt form and saving.
+// Nothing is written, so the raw Postgres text has to become an instruction.
+const FK_VIOLATION = '23503'
+
+function donationError(error: { code?: string; message: string }): Error {
+  if (error.code === FK_VIOLATION) {
+    return new Error(
+      'That pledge has been deleted, so nothing was saved. Record this money on the Received tab with "+ New Donation".',
+    )
+  }
+  return new Error(error.message)
+}
+
 export interface CreateDonationInput {
   donor_name: string
   address: string | null
@@ -60,7 +74,7 @@ export function useCreateDonation() {
         .insert({ ...input, collected_by: member?.mobile ?? null })
         .select()
         .single()
-      if (error) throw new Error(error.message)
+      if (error) throw donationError(error)
       return data as Donation
     },
     onSuccess: () => {
@@ -84,7 +98,7 @@ export function useUpdateDonation() {
         .eq('id', id)
         .select()
         .single()
-      if (error) throw new Error(error.message)
+      if (error) throw donationError(error)
       return data as Donation
     },
     onSuccess: (data) => {
