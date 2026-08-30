@@ -14,14 +14,24 @@ const blankToNull = (value: string | undefined) => {
   return trimmed === '' ? null : trimmed
 }
 
+export interface DonationFormPrefill {
+  pledge_id: string
+  donor_name: string
+  phone: string | null
+  amount: number
+}
+
 export function DonationForm({
   donation,
+  prefill,
   onSaved,
 }: {
   donation?: Donation
+  prefill?: DonationFormPrefill
   onSaved: (donation: Donation, action: SaveAction) => void
 }) {
   const isEdit = donation != null
+  const activePrefill = isEdit ? undefined : prefill
   const {
     control,
     register,
@@ -37,6 +47,15 @@ export function DonationForm({
           amount: donation.amount,
           method: donation.method,
           note: donation.note ?? '',
+        }
+      : activePrefill
+      ? {
+          donor_name: activePrefill.donor_name,
+          address: '',
+          phone: activePrefill.phone ?? '',
+          amount: activePrefill.amount,
+          method: 'offline',
+          note: '',
         }
       : {
           donor_name: '',
@@ -62,6 +81,7 @@ export function DonationForm({
         amount: data.amount,
         method: data.method,
         note: blankToNull(data.note),
+        ...(activePrefill ? { pledge_id: activePrefill.pledge_id } : {}),
       }
       const saved = isEdit
         ? await updateDonation.mutateAsync({ id: donation.id, ...input })

@@ -41,6 +41,7 @@ export interface Donation {
   method: DonationMethod
   note: string | null
   collected_by: string | null
+  pledge_id: string | null
   created_at: string
 }
 
@@ -78,6 +79,27 @@ export interface ExpenseStatus {
   expense_id: string
   total: number
   paid: number
+  balance: number
+  is_settled: boolean
+}
+
+export interface Pledge {
+  id: string
+  donor_name: string
+  phone: string | null
+  address: string | null
+  amount: number
+  note: string | null
+  assigned_to: string | null
+  closed_at: string | null
+  closed_note: string | null
+  created_at: string
+}
+
+export interface PledgeStatus {
+  pledge_id: string
+  pledged: number
+  received: number
   balance: number
   is_settled: boolean
 }

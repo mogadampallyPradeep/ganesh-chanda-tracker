@@ -7,9 +7,11 @@ import { useExpensePayments } from '../expenses/useExpensePayments'
 import { useCategories } from '../categories/useCategories'
 import { useEstimates } from '../budget/useEstimates'
 import { useCommitteeMembers, useCommitteeReimbursements } from '../committee/useCommittee'
+import { usePledges, usePledgeStatus } from '../pledges/usePledges'
 import { computeBalance } from '../../domain/balance'
 import { computeBudget, computeShortfall } from '../../domain/budget'
 import { buildActivity } from '../../domain/activity'
+import { buildPledges } from '../../domain/pledges'
 import { StatCard } from '../../components/common/StatCard'
 import { formatINR, formatDate } from '../../lib/format'
 
@@ -24,7 +26,11 @@ export function HomePage() {
   const estimatesQuery = useEstimates()
   const reimbursementsQuery = useCommitteeReimbursements()
   const membersQuery = useCommitteeMembers()
+  const pledgesQuery = usePledges()
+  const pledgeStatusQuery = usePledgeStatus()
 
+  // The pledge queries are deliberately outside these gates: they feed one optional
+  // tile, and losing them must not blank the real-money figures below.
   const loading =
     donationsQuery.isLoading ||
     expensesQuery.isLoading ||
@@ -49,6 +55,8 @@ export function HomePage() {
   const estimates = estimatesQuery.data ?? []
   const reimbursements = reimbursementsQuery.data ?? []
   const members = membersQuery.data ?? []
+  const pledges = pledgesQuery.data ?? []
+  const pledgeStatuses = pledgeStatusQuery.data
 
   const balance = useMemo(
     () => computeBalance(donations, expenses, payments, reimbursements),
@@ -62,6 +70,12 @@ export function HomePage() {
     () => computeShortfall(budget.totalEstimated, balance.collected, balance.committed),
     [budget.totalEstimated, balance.collected, balance.committed],
   )
+  const pledgeSummary = useMemo(
+    () => buildPledges(pledges, pledgeStatuses),
+    [pledges, pledgeStatuses],
+  )
+  const showExpected =
+    pledgesQuery.isSuccess && pledgeStatusQuery.isSuccess && pledgeSummary.expectedOutstanding > 0
 
   const recent = useMemo(
     () =>
@@ -110,7 +124,9 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Available vs yet to pay */}
+      {/* Available vs yet to pay, and (when in use) what's promised but not yet in hand.
+          Three rupee figures do not fit across a 360px phone, so the third takes its own
+          full-width row rather than being squeezed and clipped. */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Available" value={formatINR(balance.available)} />
         <StatCard
@@ -119,6 +135,13 @@ export function HomePage() {
           tone={balance.outstanding > 0 ? 'neg' : 'default'}
         />
       </div>
+      {showExpected && (
+        <StatCard
+          label="Yet to receive"
+          value={formatINR(pledgeSummary.expectedOutstanding)}
+          tone="pos"
+        />
+      )}
       {(balance.outstanding > 0 || balance.unreimbursedPersonal > 0) && (
         <p className={balance.freeAfterDues < 0 ? 'text-neg text-sm' : 'text-ink-soft text-sm'}>
           {balance.freeAfterDues < 0
