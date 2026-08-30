@@ -81,6 +81,7 @@ export function ExpenseForm({
           category_id: expense.category_id,
           description: expense.description,
           payee: expense.payee ?? '',
+          payee_phone: expense.payee_phone ?? '',
           amount: expense.amount,
           paid_now: expense.amount,
           paid_by: expense.paid_by ?? '',
@@ -91,6 +92,7 @@ export function ExpenseForm({
           category_id: '',
           description: '',
           payee: '',
+          payee_phone: '',
           amount: 0,
           paid_now: 0,
           paid_by: member?.mobile ?? '',
@@ -123,6 +125,7 @@ export function ExpenseForm({
           category_id: data.category_id,
           description: data.description.trim(),
           payee: blankToNull(data.payee),
+          payee_phone: blankToNull(data.payee_phone),
           amount: data.amount,
           note: blankToNull(data.note),
         })
@@ -131,6 +134,7 @@ export function ExpenseForm({
           category_id: data.category_id,
           description: data.description.trim(),
           payee: blankToNull(data.payee),
+          payee_phone: blankToNull(data.payee_phone),
           amount: data.amount,
           paid_now: data.paid_now,
           paid_by: data.paid_by,
@@ -176,7 +180,18 @@ export function ExpenseForm({
           <span className="text-xs text-ink-soft tracking-wide">Payee</span>
           <input
             {...register('payee')}
-            placeholder="Optional"
+            placeholder="Band, lighting, tent house…"
+            className="border border-line bg-bg rounded-xl px-3.5 py-3 text-ink text-base outline-none focus:border-primary"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs text-ink-soft tracking-wide">Payee contact</span>
+          <input
+            {...register('payee_phone')}
+            type="tel"
+            inputMode="tel"
+            placeholder="Optional — for next year's committee"
             className="border border-line bg-bg rounded-xl px-3.5 py-3 text-ink text-base outline-none focus:border-primary"
           />
         </label>
