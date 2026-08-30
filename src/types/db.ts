@@ -51,8 +51,6 @@ export interface Expense {
   payee: string | null
   payee_phone: string | null
   amount: number
-  paid_by: string | null
-  source: SpendSource
   note: string | null
   created_at: string
 }
