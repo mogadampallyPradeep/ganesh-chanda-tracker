@@ -7,9 +7,11 @@ import { useExpensePayments } from '../expenses/useExpensePayments'
 import { useCategories } from '../categories/useCategories'
 import { useEstimates } from '../budget/useEstimates'
 import { useCommitteeMembers, useCommitteeReimbursements } from '../committee/useCommittee'
+import { usePledges, usePledgeStatus } from '../pledges/usePledges'
 import { computeBalance } from '../../domain/balance'
 import { computeBudget, computeShortfall } from '../../domain/budget'
 import { buildActivity } from '../../domain/activity'
+import { buildPledges } from '../../domain/pledges'
 import { StatCard } from '../../components/common/StatCard'
 import { formatINR, formatDate } from '../../lib/format'
 
@@ -24,6 +26,8 @@ export function HomePage() {
   const estimatesQuery = useEstimates()
   const reimbursementsQuery = useCommitteeReimbursements()
   const membersQuery = useCommitteeMembers()
+  const pledgesQuery = usePledges()
+  const pledgeStatusQuery = usePledgeStatus()
 
   const loading =
     donationsQuery.isLoading ||
@@ -32,7 +36,9 @@ export function HomePage() {
     categoriesQuery.isLoading ||
     estimatesQuery.isLoading ||
     reimbursementsQuery.isLoading ||
-    membersQuery.isLoading
+    membersQuery.isLoading ||
+    pledgesQuery.isLoading ||
+    pledgeStatusQuery.isLoading
   const loadError =
     donationsQuery.error ??
     expensesQuery.error ??
@@ -40,7 +46,9 @@ export function HomePage() {
     categoriesQuery.error ??
     estimatesQuery.error ??
     reimbursementsQuery.error ??
-    membersQuery.error
+    membersQuery.error ??
+    pledgesQuery.error ??
+    pledgeStatusQuery.error
 
   const donations = donationsQuery.data ?? []
   const expenses = expensesQuery.data ?? []
@@ -49,6 +57,8 @@ export function HomePage() {
   const estimates = estimatesQuery.data ?? []
   const reimbursements = reimbursementsQuery.data ?? []
   const members = membersQuery.data ?? []
+  const pledges = pledgesQuery.data ?? []
+  const pledgeStatuses = pledgeStatusQuery.data ?? []
 
   const balance = useMemo(
     () => computeBalance(donations, expenses, payments, reimbursements),
@@ -61,6 +71,10 @@ export function HomePage() {
   const shortfall = useMemo(
     () => computeShortfall(budget.totalEstimated, balance.collected, balance.committed),
     [budget.totalEstimated, balance.collected, balance.committed],
+  )
+  const pledgeSummary = useMemo(
+    () => buildPledges(pledges, pledgeStatuses),
+    [pledges, pledgeStatuses],
   )
 
   const recent = useMemo(
@@ -110,14 +124,21 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Available vs yet to pay */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Available vs yet to pay, and (when in use) what's promised but not yet in hand */}
+      <div className={`grid gap-3 ${pledgeSummary.expectedOutstanding > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <StatCard label="Available" value={formatINR(balance.available)} />
         <StatCard
           label="Yet to pay"
           value={formatINR(balance.outstanding)}
           tone={balance.outstanding > 0 ? 'neg' : 'default'}
         />
+        {pledgeSummary.expectedOutstanding > 0 && (
+          <StatCard
+            label="Yet to receive"
+            value={formatINR(pledgeSummary.expectedOutstanding)}
+            tone="pos"
+          />
+        )}
       </div>
       {(balance.outstanding > 0 || balance.unreimbursedPersonal > 0) && (
         <p className={balance.freeAfterDues < 0 ? 'text-neg text-sm' : 'text-ink-soft text-sm'}>
