@@ -4,7 +4,7 @@ import { useDonations } from './useDonations'
 import { DonationForm } from './DonationForm'
 import { PledgeList } from '../pledges/PledgeList'
 import { usePledges, usePledgeStatus } from '../pledges/usePledges'
-import { buildPledges } from '../../domain/pledges'
+import { buildPledges, type PledgeRow } from '../../domain/pledges'
 import { formatINR } from '../../lib/format'
 import type { Donation } from '../../types/db'
 
@@ -28,6 +28,7 @@ export function DonationsListPage() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [tab, setTab] = useState<'received' | 'expected'>('received')
+  const [receiptFor, setReceiptFor] = useState<PledgeRow | null>(null)
 
   const filtered = useMemo(() => {
     const rows = donations ?? []
@@ -130,7 +131,33 @@ export function DonationsListPage() {
         </>
       )}
 
-      {tab === 'expected' && <PledgeList onRecordReceipt={() => {}} />}
+      {tab === 'expected' && (
+        <>
+          {receiptFor && (
+            <div className="flex flex-col gap-2">
+              <h2 className="font-display text-lg font-bold text-ink">
+                Receipt for {receiptFor.pledge.donor_name}
+              </h2>
+              <DonationForm
+                prefill={{
+                  pledge_id: receiptFor.pledge.id,
+                  donor_name: receiptFor.pledge.donor_name,
+                  phone: receiptFor.pledge.phone,
+                  amount: receiptFor.balance,
+                }}
+                onSaved={(donation, action) => {
+                  setReceiptFor(null)
+                  if (action === 'share') {
+                    navigate(`/collect/${donation.id}/receipt`)
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          <PledgeList onRecordReceipt={setReceiptFor} />
+        </>
+      )}
     </div>
   )
 }
