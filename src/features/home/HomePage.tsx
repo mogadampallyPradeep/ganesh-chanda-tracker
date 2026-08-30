@@ -29,6 +29,8 @@ export function HomePage() {
   const pledgesQuery = usePledges()
   const pledgeStatusQuery = usePledgeStatus()
 
+  // The pledge queries are deliberately outside these gates: they feed one optional
+  // tile, and losing them must not blank the real-money figures below.
   const loading =
     donationsQuery.isLoading ||
     expensesQuery.isLoading ||
@@ -36,9 +38,7 @@ export function HomePage() {
     categoriesQuery.isLoading ||
     estimatesQuery.isLoading ||
     reimbursementsQuery.isLoading ||
-    membersQuery.isLoading ||
-    pledgesQuery.isLoading ||
-    pledgeStatusQuery.isLoading
+    membersQuery.isLoading
   const loadError =
     donationsQuery.error ??
     expensesQuery.error ??
@@ -46,9 +46,7 @@ export function HomePage() {
     categoriesQuery.error ??
     estimatesQuery.error ??
     reimbursementsQuery.error ??
-    membersQuery.error ??
-    pledgesQuery.error ??
-    pledgeStatusQuery.error
+    membersQuery.error
 
   const donations = donationsQuery.data ?? []
   const expenses = expensesQuery.data ?? []
@@ -76,6 +74,8 @@ export function HomePage() {
     () => buildPledges(pledges, pledgeStatuses),
     [pledges, pledgeStatuses],
   )
+  const showExpected =
+    pledgesQuery.isSuccess && pledgeStatusQuery.isSuccess && pledgeSummary.expectedOutstanding > 0
 
   const recent = useMemo(
     () =>
@@ -125,18 +125,20 @@ export function HomePage() {
       </div>
 
       {/* Available vs yet to pay, and (when in use) what's promised but not yet in hand */}
-      <div className={`grid gap-3 ${pledgeSummary.expectedOutstanding > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-        <StatCard label="Available" value={formatINR(balance.available)} />
+      <div className={`grid gap-3 ${showExpected ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <StatCard label="Available" value={formatINR(balance.available)} dense={showExpected} />
         <StatCard
           label="Yet to pay"
           value={formatINR(balance.outstanding)}
           tone={balance.outstanding > 0 ? 'neg' : 'default'}
+          dense={showExpected}
         />
-        {pledgeSummary.expectedOutstanding > 0 && (
+        {showExpected && (
           <StatCard
             label="Yet to receive"
             value={formatINR(pledgeSummary.expectedOutstanding)}
             tone="pos"
+            dense
           />
         )}
       </div>

@@ -22,8 +22,8 @@ function MethodPill({ method }: { method: Donation['method'] }) {
 
 export function DonationsListPage() {
   const { data: donations, isLoading, isError, error } = useDonations()
-  const { data: pledges } = usePledges()
-  const { data: statuses } = usePledgeStatus()
+  const { data: pledges, isSuccess: pledgesLoaded } = usePledges()
+  const { data: statuses, isSuccess: statusesLoaded } = usePledgeStatus()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -38,7 +38,11 @@ export function DonationsListPage() {
   }, [donations, search])
 
   const { expectedOutstanding } = buildPledges(pledges ?? [], statuses ?? [])
-  const expectedLabel = expectedOutstanding > 0 ? `Expected (${formatINR(expectedOutstanding)})` : 'Expected'
+  // Both queries must have landed: a missing status makes every pledge look untouched,
+  // which would show an inflated figure here.
+  const expectedKnown = pledgesLoaded && statusesLoaded
+  const expectedLabel =
+    expectedKnown && expectedOutstanding > 0 ? `Expected (${formatINR(expectedOutstanding)})` : 'Expected'
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -135,10 +139,20 @@ export function DonationsListPage() {
         <>
           {receiptFor && (
             <div className="flex flex-col gap-2">
-              <h2 className="font-display text-lg font-bold text-ink">
-                Receipt for {receiptFor.pledge.donor_name}
-              </h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-lg font-bold text-ink">
+                  Receipt for {receiptFor.pledge.donor_name}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setReceiptFor(null)}
+                  className="text-sm text-ink-soft border border-line rounded-xl px-3 py-2"
+                >
+                  Cancel
+                </button>
+              </div>
               <DonationForm
+                key={receiptFor.pledge.id}
                 prefill={{
                   pledge_id: receiptFor.pledge.id,
                   donor_name: receiptFor.pledge.donor_name,

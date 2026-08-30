@@ -5,13 +5,16 @@ import { PledgeForm } from './PledgeForm'
 import { useCommitteeMembers } from '../committee/useCommittee'
 import { useAuth } from '../auth/useAuth'
 import { formatINR } from '../../lib/format'
+import type { Pledge } from '../../types/db'
+
+type OpenForm = { kind: 'new' } | { kind: 'edit'; pledge: Pledge } | null
 
 export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (row: PledgeRow) => void }) {
   const { data: pledges, isLoading, isError, error } = usePledges()
-  const { data: statuses } = usePledgeStatus()
+  const { data: statuses, isError: isStatusError, error: statusError } = usePledgeStatus()
   const { data: members } = useCommitteeMembers()
   const { isAdmin } = useAuth()
-  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState<OpenForm>(null)
 
   const closePledge = useClosePledge()
   const reopenPledge = useReopenPledge()
@@ -41,18 +44,40 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (row: PledgeR
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => setForm((f) => (f?.kind === 'new' ? null : { kind: 'new' }))}
           className="rounded-xl px-4 py-2 font-semibold text-white bg-gradient-to-b from-primary to-primary-deep"
         >
-          {showForm ? 'Cancel' : '+ New Pledge'}
+          {form?.kind === 'new' ? 'Cancel' : '+ New Pledge'}
         </button>
       </div>
 
-      {showForm && <PledgeForm onSaved={() => setShowForm(false)} />}
+      {form?.kind === 'new' && <PledgeForm onSaved={() => setForm(null)} />}
+
+      {form?.kind === 'edit' && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-display text-lg font-bold text-ink">Editing {form.pledge.donor_name}</h3>
+            <button
+              type="button"
+              onClick={() => setForm(null)}
+              className="text-sm text-ink-soft border border-line rounded-xl px-3 py-2"
+            >
+              Cancel
+            </button>
+          </div>
+          <PledgeForm key={form.pledge.id} pledge={form.pledge} onSaved={() => setForm(null)} />
+        </div>
+      )}
 
       {isLoading && <p className="text-ink-soft text-sm">Loading pledges…</p>}
       {isError && (
         <p className="text-neg text-sm">{error instanceof Error ? error.message : 'Could not load pledges'}</p>
+      )}
+      {isStatusError && (
+        <p className="text-neg text-sm">
+          {statusError instanceof Error ? statusError.message : 'Could not load what has been received'}
+          {' — amounts received are missing, so these figures are not reliable.'}
+        </p>
       )}
 
       {!isLoading && !isError && open.length === 0 && done.length === 0 && (
@@ -84,6 +109,13 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (row: PledgeR
                   className="rounded-xl px-4 py-2 font-semibold text-white bg-gradient-to-b from-primary to-primary-deep"
                 >
                   Record receipt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ kind: 'edit', pledge: row.pledge })}
+                  className="text-sm text-ink-soft border border-line rounded-xl px-3 py-2"
+                >
+                  Edit
                 </button>
                 <button
                   type="button"
