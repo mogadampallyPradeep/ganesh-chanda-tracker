@@ -16,11 +16,12 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (pledgeId: st
     isSuccess: isStatusLoaded,
     isError: isStatusError,
     error: statusError,
+    isPaused: isStatusPaused,
   } = usePledgeStatus()
   const { data: members } = useCommitteeMembers()
   const { isAdmin } = useAuth()
   const [form, setForm] = useState<OpenForm>(null)
-  const editRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const closePledge = useClosePledge()
   const reopenPledge = useReopenPledge()
@@ -34,6 +35,13 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (pledgeId: st
   // promised amount, two taps from a duplicate receipt.
   const listsReady = !isLoading && !isError && isStatusLoaded
 
+  // Awaiting the invalidation keeps a slow refresh honest, but React Query resolves a
+  // refetch it has PARKED for being offline immediately, so 'success' can still be
+  // serving pre-save rows. Offline she cannot save a donation anyway — that mutation
+  // parks too — so withholding the one money action costs her nothing and closes the
+  // window where a just-settled pledge still offers a second receipt.
+  const canRecordReceipt = listsReady && !isStatusPaused
+
   const editingId = form?.kind === 'edit' ? form.id : null
   const editing = editingId ? pledges?.find((p) => p.id === editingId) ?? null : null
 
@@ -41,13 +49,17 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (pledgeId: st
     if (editingId && pledges && !pledges.some((p) => p.id === editingId)) setForm(null)
   }, [editingId, pledges])
 
+  // Only one of the two forms is ever mounted, so they share a ref. Keyed to which
+  // form opened, so it fires once per open rather than on every background refetch.
+  const openFormKey = form?.kind === 'new' ? 'new' : editingId
+
   useEffect(() => {
-    if (!editingId) return
-    const el = editRef.current
+    if (!openFormKey) return
+    const el = formRef.current
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     el.querySelector('input')?.focus({ preventScroll: true })
-  }, [editingId])
+  }, [openFormKey])
 
   const nameFor = (mobile: string | null) => {
     if (!mobile) return 'Unassigned'
@@ -105,10 +117,14 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (pledgeId: st
         </button>
       </div>
 
-      {form?.kind === 'new' && <PledgeForm onSaved={() => setForm(null)} />}
+      {form?.kind === 'new' && (
+        <div ref={formRef} className="scroll-mt-4">
+          <PledgeForm onSaved={() => setForm(null)} />
+        </div>
+      )}
 
       {editing && (
-        <div ref={editRef} className="flex flex-col gap-2 scroll-mt-4">
+        <div ref={formRef} className="flex flex-col gap-2 scroll-mt-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-display text-lg font-bold text-ink">Editing {editing.donor_name}</h3>
             <button
@@ -131,6 +147,13 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (pledgeId: st
         <p className="text-neg text-sm">
           {statusError instanceof Error ? statusError.message : 'Could not load what has been received'}
           {' — amounts received are missing, so pledges cannot be shown safely. Pull to refresh once you have signal.'}
+        </p>
+      )}
+
+      {listsReady && isStatusPaused && (
+        <p className="text-neg text-sm">
+          No connection — amounts received may be out of date, so receipts cannot be recorded until you are
+          back online. The figures below are the last ones this phone managed to load.
         </p>
       )}
 
@@ -162,7 +185,7 @@ export function PledgeList({ onRecordReceipt }: { onRecordReceipt: (pledgeId: st
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || !canRecordReceipt}
                     onClick={() => onRecordReceipt(row.pledge.id)}
                     className="rounded-xl px-4 py-2 font-semibold text-white bg-gradient-to-b from-primary to-primary-deep disabled:opacity-50"
                   >

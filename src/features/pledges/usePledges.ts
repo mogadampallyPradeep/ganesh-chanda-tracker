@@ -30,11 +30,17 @@ export function usePledgeStatus() {
 }
 
 /** A pledge change moves the expected figure and, on delete, the donations that
- *  pointed at it, so every dependent key is invalidated together. */
+ *  pointed at it, so every dependent key is invalidated together.
+ *
+ *  The promise is returned so callers can return it from onSuccess: the mutation then
+ *  stays pending until the lists are genuinely fresh, instead of settling while React
+ *  Query is still serving the pre-change rows at status 'success'. */
 export function invalidatePledges(queryClient: QueryClient) {
-  queryClient.invalidateQueries({ queryKey: pledgeKeys.all })
-  queryClient.invalidateQueries({ queryKey: pledgeKeys.status })
-  queryClient.invalidateQueries({ queryKey: donationKeys.all })
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: pledgeKeys.all }),
+    queryClient.invalidateQueries({ queryKey: pledgeKeys.status }),
+    queryClient.invalidateQueries({ queryKey: donationKeys.all }),
+  ])
 }
 
 export interface CreatePledgeInput {
