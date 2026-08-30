@@ -54,11 +54,13 @@ export function useCreateExpenseWithPayment() {
 
   return useMutation({
     mutationFn: async (input: CreateExpenseWithPaymentInput) => {
+      // paid_by and source describe the first PAYMENT, not the commitment —
+      // they are written to expense_payments below, never to expenses.
       const { paid_now, paid_by, source, ...expenseFields } = input
 
       const { data: expense, error } = await supabase
         .from('expenses')
-        .insert({ ...expenseFields, paid_by, source })
+        .insert(expenseFields)
         .select()
         .single()
       if (error) throw new Error(error.message)

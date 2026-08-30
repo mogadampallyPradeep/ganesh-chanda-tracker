@@ -84,8 +84,8 @@ export function ExpenseForm({
           payee_phone: expense.payee_phone ?? '',
           amount: expense.amount,
           paid_now: expense.amount,
-          paid_by: expense.paid_by ?? '',
-          source: expense.source ?? 'cash',
+          paid_by: member?.mobile ?? '',
+          source: 'cash',
           note: expense.note ?? '',
         }
       : {
